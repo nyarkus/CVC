@@ -24,42 +24,18 @@ namespace CCVC.Encoder
                 {
                     int currentIndex = Interlocked.Increment(ref frameIndex) - 1;
 
-                    var frame = FrameConverter.Convert(frameStream, countOfColors, width, height);
+                    var frame = FrameConverter.Instance.Convert(frameStream, countOfColors, width, height);
                     framesDict[currentIndex] = frame;
 
                 });
 
                 list = framesDict.OrderBy(kv => kv.Key).Select(kv => kv.Value).ToList();
             }
+            
+            var audio = ffmpeg.ExtractAndResampleSoundToMemory(filename);
 
-            var audio = ffmpeg.ExtractSoundToMemory(filename);
-
-            {
-                using (var reader = new Mp3FileReader(audio))
-                {
-                    var mem = new MemoryStream();
-                    WaveFileWriter.WriteWavFileToStream(mem, reader);
-
-                    audio = new MemoryStream(mem.ToArray());
-                }
-                using var wavReader = new WaveFileReader(audio);
-
-                var lowQualityFormat = new WaveFormat(8000, 8, wavReader.WaveFormat.Channels);
-
-                using var conversionStream = new WaveFormatConversionStream(lowQualityFormat, wavReader);
-
-                using var outputWavStream = new MemoryStream();
-                using (var wavWriter = new WaveFileWriter(outputWavStream, conversionStream.WaveFormat))
-                {
-                    conversionStream.CopyTo(wavWriter);
-                }
-
-                audio = outputWavStream;
-            }
-
-            var video = new CVideo(list.ToArray(), fps, audio.ToArray(), width, height, countOfColors);
-
-            GC.Collect();
+            var video = new CVideo(list.ToList().ToArray(), fps, sound: audio.ToArray(), width, height, countOfColors);
+            
             return video;
         }
     }

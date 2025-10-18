@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
 
 namespace CCVC.Decoder
 {
@@ -98,7 +94,9 @@ namespace CCVC.Decoder
         {
             while (_stream.Position < _stream.Length)
             {
+                #if DEBUG
                 Debug.WriteLine($"RecalculateBuffer executed on {DateTimeOffset.UtcNow}");
+                #endif
                 try
                 {
                     int neededFrames = BufferSize - _framesInBuffer;
@@ -118,16 +116,23 @@ namespace CCVC.Decoder
 
                     var tempBuffer = new ConcurrentDictionary<int, Frame>();
                     var options = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
-                    Parallel.For(0, preloaded.Count, options, i =>
+                    //Parallel.For(0, preloaded.Count, options, i =>
+                    for (int i = 0; i < preloaded.Count; i++) // TODO: In theory, this is a temporary solution, but playback works quite well on my hardware.
                     {
                         try
                         {
-                            string content = FrameConverter.Convert(preloaded[i], _chars, _stream.ColorCount, _stream.Width, _stream.Height);
+                            string content = FrameConverter.Instance.Convert(preloaded[i], _chars, _stream.ColorCount,
+                                _stream.Width, _stream.Height);
                             int index = _stream.Position - preloaded.Count + i;
                             tempBuffer.TryAdd(index, new Frame(content, index));
                         }
-                        catch { }
-                    });
+                        catch (Exception ex)
+                        {
+                            #if DEBUG
+                            Debug.WriteLine(ex);
+                            #endif
+                        }
+                    }//);
 
                     _bufferLock.EnterWriteLock();
                     try
@@ -148,7 +153,9 @@ namespace CCVC.Decoder
                 finally
                 {
                     //_bufferSemaphore.Release();
+                    #if DEBUG
                     Debug.WriteLine($"RecalculateBuffer completed on {DateTimeOffset.UtcNow}");
+                    #endif
                 }
             }
             
@@ -176,8 +183,7 @@ namespace CCVC.Decoder
             }
 
             _bufferLock.EnterReadLock();
-
-            Console.Title = $"Buffer: {BufferSize};Buffered: {_framesInBuffer};Last frame: {_lastFrame};Stream pos: {_stream.Position}";
+            
             try
             {
                 if (_bufferedFrames.TryGetValue(_lastFrame, out Frame frameData))

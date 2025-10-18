@@ -81,7 +81,6 @@ public class CVideo
         gzip.Write(buffer, 0, buffer.Length);
         gzip.Close();
         stream.Close();
-        GC.Collect();
     }
     public void Save(string filename)
         => Save(File.Create(filename));

@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if PLATFORM_WINDOWS
+using System;
 using System.Runtime.InteropServices;
 
 public static class ConsoleHelper
@@ -80,3 +81,4 @@ public static class ConsoleHelper
         }
     }
 }
+#endif

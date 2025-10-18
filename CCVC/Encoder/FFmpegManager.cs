@@ -9,9 +9,12 @@ public abstract class FFmpegManager
 {
     protected readonly string _ffmpegPath;
 
-    public FFmpegManager(string ffmpegPath = "ffmpeg.exe")
+    public FFmpegManager()
     {
-        _ffmpegPath = ffmpegPath;
+        if(OperatingSystem.IsWindows())
+            _ffmpegPath = "ffmpeg.exe";
+        else if(OperatingSystem.IsLinux())
+            _ffmpegPath = "ffmpeg";
     }
 
     public abstract void CheckFFmpeg();
@@ -56,6 +59,43 @@ public abstract class FFmpegManager
         memory.Position = 0;
         return memory;
     }
+    
+    public MemoryStream ExtractAndResampleSoundToMemory(string videoPath)
+    {
+        CheckFFmpeg();
+
+        var memory = new MemoryStream();
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = _ffmpegPath,
+                Arguments = $"-i \"{videoPath}\" -f wav -ac 1 -acodec pcm_u8 -ar 8000 -",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            }
+        };
+
+        process.Start();
+        
+        Task.Run(() =>
+        {
+            string errorLine;
+            while ((errorLine = process.StandardError.ReadLine()) != null)
+            {
+                Debug.WriteLine(errorLine);
+            }
+        });
+        
+        process.StandardOutput.BaseStream.CopyTo(memory);
+        
+        process.WaitForExit();
+        memory.Position = 0;
+        return memory;
+    }
+    
     public double GetFPS(string videoPath)
     {
         CheckFFmpeg();

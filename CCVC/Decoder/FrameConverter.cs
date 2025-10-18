@@ -1,60 +1,75 @@
-﻿using ComputeSharp;
+﻿using ILGPU;
 using System.Text;
+using ILGPU.Runtime;
 
 namespace CCVC.Decoder;
 
-public class FrameConverter
+public class FrameConverter : IDisposable
 {
-    public static string Convert(byte[] input, string chars, byte colors, int width, int height)
-    {
-        int[,] EncodedFrame = new int[height, width];
+    private readonly Context _context;
+    private readonly Accelerator _accelerator;
+    
+    private static readonly Lazy<FrameConverter> _lazyInstance = new(() => new FrameConverter());
+    
+    public static FrameConverter Instance => _lazyInstance.Value;
 
+    private readonly Action<Index2D, ArrayView2D<int, Stride2D.DenseX>, ArrayView2D<int, Stride2D.DenseX>, ArrayView<int>> _kernel;
+
+    private FrameConverter()
+    {
+        _context = Context.Create(builder => builder.Default().EnableAlgorithms());
+        _accelerator = _context.GetPreferredDevice(false).CreateAccelerator(_context);
+        
+        _kernel = _accelerator.LoadAutoGroupedStreamKernel<
+            Index2D, 
+            ArrayView2D<int, Stride2D.DenseX>, 
+            ArrayView2D<int, Stride2D.DenseX>, 
+            ArrayView<int>>(GpuKernels.DecodeKernel);
+    }
+    
+    public string Convert(byte[] input, string chars, byte colors, int width, int height)
+    {
+        int[,] encodedFrame = new int[height, width];
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
                 int index = y * width + x;
-                EncodedFrame[y, x] = input[index];
+                encodedFrame[y, x] = input[index];
             }
         }
-
-
-        using var texture = GraphicsDevice.GetDefault().AllocateReadOnlyTexture2D<int>(EncodedFrame);
-        using var buffer = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<int>(width, height);
-        using var properties = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer<int>([chars.Length, colors]);
-        //lock(locker)
-        //{
-        GraphicsDevice.GetDefault().For<DecodeShader>(texture.Width, texture.Height, new DecodeShader(texture, buffer, properties));
-        //}
         
-        var result = buffer.ToArray();
+        using var inputBuffer = _accelerator.Allocate2DDenseX<int>((height, width));
+        using var outputBuffer = _accelerator.Allocate2DDenseX<int>((height, width));
+        using var propertiesBuffer = _accelerator.Allocate1D<int>(2);
 
+        inputBuffer.CopyFromCPU(encodedFrame);
+        propertiesBuffer.CopyFromCPU(new int[] { chars.Length, colors });
+        
+        _kernel((height, width), inputBuffer.View, outputBuffer.View, propertiesBuffer.View);
+    
+        _accelerator.Synchronize();
 
-        StringBuilder DecodedFrame = new();
+        var result = outputBuffer.GetAsArray2D();
 
+        StringBuilder decodedFrame = new StringBuilder(width * height + height);
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                var index = result[y, x];
-                DecodedFrame.Append(chars[index]);
+                int charIndex = result[y, x];
+                decodedFrame.Append(chars[charIndex < chars.Length ? charIndex : 0]);
             }
-            DecodedFrame.AppendLine();
+            decodedFrame.AppendLine();
         }
 
-        return DecodedFrame.ToString();
+        return decodedFrame.ToString();
     }
-}
-
-
-[ThreadGroupSize(DefaultThreadGroupSizes.XY)]
-[GeneratedComputeShaderDescriptor]
-public readonly partial struct DecodeShader(ReadOnlyTexture2D<int> input, ReadWriteTexture2D<int> buffer, ReadOnlyBuffer<int> properties) : IComputeShader
-{
-    public void Execute()
+    
+    public void Dispose()
     {
-        float k = (float)properties[1] / properties[0];
-        int value = (int)(input[ThreadIds.XY] / k + 0.5f);
-        buffer[ThreadIds.XY] = Hlsl.Clamp(value, 0, properties[0] - 1);
+        _accelerator.Dispose();
+        _context.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

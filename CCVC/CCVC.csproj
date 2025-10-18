@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
-		<TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -10,15 +10,24 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ComputeSharp" Version="3.1.0" />
 		<PackageReference Include="Google.FlatBuffers" Version="24.12.23" />
+		<PackageReference Include="ILGPU" Version="1.5.3" />
+		<PackageReference Include="ILGPU.Algorithms" Version="1.5.3" />
+		<PackageReference Include="ManagedBass" Version="4.0.2" />
 		<PackageReference Include="NAudio" Version="2.2.1" />
-		<PackageReference Include="SkiaSharp" Version="3.116.1" />
+		<PackageReference Include="SkiaSharp" Version="3.119.1" />
+		<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.1" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Folder Include="Properties\" />
 		<Folder Include="Schemes\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="libbass.so">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 </Project>
