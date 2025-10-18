@@ -9,8 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsolePlayer", "ConsolePla
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Converter", "Converter\Converter.csproj", "{FB074E13-C41B-4C1D-A695-B0E450A22A02}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Installer.csproj", "{7C666581-51D6-45E1-9FF0-B6E691863C2C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,10 +27,6 @@ Global
 		{FB074E13-C41B-4C1D-A695-B0E450A22A02}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB074E13-C41B-4C1D-A695-B0E450A22A02}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FB074E13-C41B-4C1D-A695-B0E450A22A02}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7C666581-51D6-45E1-9FF0-B6E691863C2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7C666581-51D6-45E1-9FF0-B6E691863C2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7C666581-51D6-45E1-9FF0-B6E691863C2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7C666581-51D6-45E1-9FF0-B6E691863C2C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
