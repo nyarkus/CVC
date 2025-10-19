@@ -2,7 +2,7 @@ using ILGPU;
 using ILGPU.Algorithms;
 using ILGPU.Runtime;
 
-namespace CCVC;
+namespace CVC;
 
 public static class GpuKernels
 {
@@ -35,5 +35,31 @@ public static class GpuKernels
         int clampedIndex = XMath.Clamp(colorIndex, 0, properties[0] - 1);
         
         outputBuffer[index] = clampedIndex;
+    }
+
+    public static void ApplyDeltaKernel(
+        Index2D index,
+        ArrayView2D<byte, Stride2D.DenseX> intraCoded,
+        ArrayView2D<sbyte, Stride2D.DenseX> predictedFrame,
+        ArrayView2D<byte, Stride2D.DenseX> output)
+    {
+        byte full = intraCoded[index];
+        sbyte delta = predictedFrame[index];
+        
+        output[index] = (byte)XMath.Clamp(full + delta, 0, 255);
+    }
+
+    public static void CalculateDeltaKernel(
+        Index2D index,
+        ArrayView2D<byte, Stride2D.DenseX> frame1,
+        ArrayView2D<byte, Stride2D.DenseX> frame2,
+        ArrayView2D<sbyte, Stride2D.DenseX> output)
+    {
+        byte first =  frame1[index];
+        byte second = frame2[index];
+
+        var result = (sbyte)XMath.Clamp(second - first, -128, 127);
+        
+        output[index] = result;
     }
 }

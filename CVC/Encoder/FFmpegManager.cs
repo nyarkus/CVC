@@ -3,7 +3,7 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 
-namespace CCVC.Encoder;
+namespace CVC.Encoder;
 
 public abstract class FFmpegManager
 {
@@ -179,6 +179,7 @@ public abstract class FFmpegManager
 
         process.WaitForExit();
     }
+    
     private MemoryStream ReadBmpFrameToMemory(Stream stream)
     {
         var buffer = new byte[54];

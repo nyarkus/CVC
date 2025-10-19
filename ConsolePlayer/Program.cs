@@ -1,4 +1,4 @@
-﻿using CCVC;
+﻿using CVC;
 using System.Security.Principal;
 using Microsoft.Win32;
 using ConsolePlayer;
@@ -17,7 +17,7 @@ class Program
         else
             source = args[0].Trim('"');
 
-        var video = CVideo.Load(source);
-        CCVC.Players.ConsolePlayer.Play(video);
+        var video = CVideoFile.FromStream(File.OpenRead(source));
+        CVC.Players.ConsolePlayer.Play(video);
     }
 }

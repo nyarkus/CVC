@@ -1,4 +1,4 @@
-﻿using CCVC;
+﻿using CVC;
 using ILGPU;
 using ILGPU.Runtime;
 using SkiaSharp;
@@ -6,7 +6,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace CCVC.Encoder;
+namespace CVC.Encoder;
 
 public class FrameConverter : IDisposable
 {
@@ -66,7 +66,6 @@ public class FrameConverter : IDisposable
         {
             for (int x = 0; x < width; x++)
             {
-                // В C# массив result индексируется правильно [y, x]
                 frameData[y * width + x] = (byte)result[y, x];
             }
         }

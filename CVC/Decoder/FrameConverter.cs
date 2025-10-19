@@ -2,7 +2,7 @@
 using System.Text;
 using ILGPU.Runtime;
 
-namespace CCVC.Decoder;
+namespace CVC.Decoder;
 
 public class FrameConverter : IDisposable
 {

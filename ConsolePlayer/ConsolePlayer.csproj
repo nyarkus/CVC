@@ -10,7 +10,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\CCVC\CCVC.csproj" />
+	  <ProjectReference Include="..\CVC\CVC.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

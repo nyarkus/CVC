@@ -1,12 +1,12 @@
-﻿using CCVC.Decoder;
-using NAudio.Wave;
+﻿using NAudio.Wave;
 using System;
 using System.Diagnostics;
 using System.Threading;
+using CVC.Decoder;
 using ManagedBass;
 using PlaybackState = ManagedBass.PlaybackState;
 
-namespace CCVC.Players
+namespace CVC.Players
 {
     public class ConsolePlayer
     {
@@ -28,7 +28,7 @@ namespace CCVC.Players
             return result;
         }
 #endif
-        public static void Play(CVideo video)
+        public static void Play(CVideoFile video)
         {
             if (!Bass.Init())
             {
@@ -53,12 +53,7 @@ namespace CCVC.Players
             Console.WindowHeight = video.Height + 1;
 #endif
 
-            var decoder = new FrameDecoder(
-                video.Width,
-                video.Height,
-                video.FPS,
-                new CVideoFrameReader(video)
-            );
+            var decoder = new FrameDecoder(video);
             _ = Task.Run(decoder.RecalculateBuffer);
             while (!decoder.BufferIsFull)
                 Thread.Sleep(1);
@@ -76,37 +71,34 @@ namespace CCVC.Players
             Bass.ChannelPlay(streamHandle);
 
             double accumulatedTime = 0;
-            double frameTime = 1.0 / video.FPS;
+            double frameTime = 1.0 / video.Meta.Fps;
             int targetFrame = 0;
+            int lastDisplayedFrame = -1;
             
             while (Bass.ChannelIsActive(streamHandle) == PlaybackState.Playing)
             {
                 long bytePosition = Bass.ChannelGetPosition(streamHandle);
                 double audioTime = Bass.ChannelBytes2Seconds(streamHandle, bytePosition);
 
-                targetFrame = (int)(audioTime * video.FPS);
-
+                targetFrame = (int)(audioTime * video.Meta.Fps);
+                
+                if (targetFrame == lastDisplayedFrame)
+                    continue;
+                
                 if (targetFrame > decoder.LastDecodedFrame)
-                {
                     decoder.Seek(targetFrame);
-                }
 
                 string frame = decoder.ReadFrame(targetFrame);
-                if (!string.IsNullOrEmpty(frame))
+                if (frame != null)
                 {
                     Console.SetCursorPosition(0, 0);
                     Console.Write(frame);
+                    lastDisplayedFrame = targetFrame;
                 }
                 else
                 {
-                    Debug.WriteLine($"Frame {targetFrame} not found in buffer");
-                }
-
-                accumulatedTime += frameTime;
-                double sleepTime = accumulatedTime - swGlobal.Elapsed.TotalSeconds;
-                if (sleepTime > 0)
-                {
-                    Task.Delay((int)(sleepTime * 1000)).Wait();
+                    Debug.WriteLine($"Frame {targetFrame} not found in buffer. Last buffered: {decoder.LastDecodedFrame}");
+                    Thread.Sleep(1);
                 }
             }
             

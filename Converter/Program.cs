@@ -1,5 +1,5 @@
-﻿using CCVC.Encoder;
-using CCVC.Players;
+﻿using CVC.Encoder;
+using CVC.Players;
 using Converter;
 
 class Program
@@ -43,9 +43,6 @@ class Program
         output = Path.ChangeExtension(output, ".ccv");
 
         Console.WriteLine("Converting...");
-        var video = CCVC.Encoder.Converter.ConvertFromVideo(new FFmpeg(), source, width, height, colors);
-
-        Console.WriteLine("Saving...");
-        video.Save(output);
+        var video = CVC.Encoder.Converter.ConvertFromVideo(new FFmpeg(), source, File.Open(output, FileMode.OpenOrCreate), width, height, colors);
     }
 }
