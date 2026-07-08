@@ -18,11 +18,10 @@ public class CVideoStream
     private CVideoMeta _meta;
     private CVideoSteamMode _mode;
     
-    public long Length { get { return _length; } }
-    public long Position { get { return _position; } }
+    public long Length => _length;  
+    public long Position => _position;
 
     private Semaphore _semaphore = new(1, 1);
-    private Semaphore _readSemaphore = new(1, 1);
 
     public CVideoStream(Stream stream, CVideoMeta meta, CVideoSteamMode mode)
     {
@@ -67,17 +66,25 @@ public class CVideoStream
     public byte[] ReadFrame()
     {
         _semaphore.WaitOne();
-        
-        if (_position + 1 >= _length)
-            return Array.Empty<byte>();
-        
-        var frameType = (FrameType)_reader.ReadByte();
-        int frameLength = _reader.ReadInt32();
-        var frame = _reader.ReadBytes(frameLength);
 
-        _position++;
-        _semaphore.Release();
-        
+        FrameType frameType;
+        byte[] frame;
+        try
+        {
+            if (_position >= _length)
+                return Array.Empty<byte>();
+
+            frameType = (FrameType)_reader.ReadByte();
+            int frameLength = _reader.ReadInt32();
+            frame = _reader.ReadBytes(frameLength);
+
+            _position++;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+
         if (frameType == FrameType.IntraCoded)
         {
             var decompressedFrame = RLE.Decompress(Brotli.Decompress(frame));
@@ -99,16 +106,21 @@ public class CVideoStream
     public void SkipFrame()
     {
         _semaphore.WaitOne();
-        
-        _position++;
-        if (_position + 1 >= _length)
-            return;
-        
-        _ = (FrameType)_reader.ReadByte();
-        var frameLength = _reader.ReadInt32();
-        _ = _reader.ReadBytes(frameLength);
 
-        _semaphore.Release();
+        try
+        {
+            if (_position >= _length)
+                return;
+
+            _ = (FrameType)_reader.ReadByte();
+            var frameLength = _reader.ReadInt32();
+            _ = _reader.ReadBytes(frameLength);
+            _position++;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
     
     public long Seek(long offset, SeekOrigin origin)
@@ -139,19 +151,22 @@ public class CVideoStream
             return _position;
     
         _semaphore.WaitOne();
-        
-        var keyFrame = _keyFrameIndex
-            .LastOrDefault(kf => kf.FrameNumber <= targetPosition);
-        
-        if (keyFrame.FrameNumber == 0 && targetPosition > 0) 
-            keyFrame = _keyFrameIndex.First();
-        
-        _reader.BaseStream.Position = keyFrame.StreamPosition;
-        _position = keyFrame.FrameNumber;
-        _lastIntraCodedFrame = null;
+        try
+        {
+            var keyFrame = _keyFrameIndex
+                .LastOrDefault(kf => kf.FrameNumber <= targetPosition);
 
-        _semaphore.Release();
-        ReadFrame();
+            if (keyFrame.FrameNumber == 0 && targetPosition > 0)
+                keyFrame = _keyFrameIndex.First();
+
+            _reader.BaseStream.Position = keyFrame.StreamPosition;
+            _position = keyFrame.FrameNumber;
+            _lastIntraCodedFrame = null;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
 
         while (_position < targetPosition)
             ReadFrame();
