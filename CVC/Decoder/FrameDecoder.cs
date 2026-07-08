@@ -19,7 +19,7 @@ namespace CVC.Decoder
         private bool _streamPositionKnown;
         private bool _disposed;
 
-        public int BufferSize { get; set; } = 240;
+        public int BufferSize { get; set; } = 30;
         public int BackBufferSize { get; set; } = 8;
 
         public long LastDecodedFrame
