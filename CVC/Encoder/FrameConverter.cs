@@ -41,7 +41,7 @@ public class FrameConverter : IDisposable
         using var finalBitmap = new SKBitmap(imageInfo);
         using (var canvas = new SKCanvas(finalBitmap))
         {
-            canvas.DrawBitmap(originalBitmap, new SKRect(0, 0, width, height));
+            canvas.DrawBitmap(originalBitmap, new SKRect(0, 0, width, height), SKSamplingOptions.Default);
         }
         
         var pixelSpanUint = MemoryMarshal.Cast<byte, uint>(finalBitmap.GetPixelSpan());
