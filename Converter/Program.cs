@@ -14,7 +14,18 @@ class Program
         while (true)
         {
             Console.WriteLine(text);
-            if (int.TryParse(Console.ReadLine(), out var value))
+            if (int.TryParse(Console.ReadLine(), out var value) && value > 0 && value <= max)
+                return value;
+        }
+    }
+
+    private static string ReadRequiredPath(string text)
+    {
+        while (true)
+        {
+            Console.WriteLine(text);
+            var value = Console.ReadLine()?.Trim('"');
+            if (!string.IsNullOrWhiteSpace(value))
                 return value;
         }
     }
@@ -24,25 +35,25 @@ class Program
         #if PLATFORM_WINDOWS
         var maxWidth = ConsolePlayer.GetMaxWidth();
         var maxHeight = ConsolePlayer.GetMaxHeight();
-        #endif
+        #else
         var maxWidth = Console.LargestWindowWidth;
         var maxHeight = Console.LargestWindowHeight;
+        #endif
         
         Console.Clear();
 
-        Console.WriteLine("Enter a source video:");
-        string source = Console.ReadLine().Trim('"');
+        string source = ReadRequiredPath("Enter a source video:");
 
         byte colors = (byte)ReadInt($"How many colors do you want to use? (max is {byte.MaxValue})", byte.MaxValue);
         Console.WriteLine($"Your resolution limit is {maxWidth}x{maxHeight}");
         int width = ReadInt($"Specify the width of the video (in number of characters. Your max is {maxWidth})", maxWidth);
         int height = ReadInt($"Specify the heigh of the video (in number of characters. Your max is {maxHeight})", maxHeight);
         
-        Console.WriteLine("Where to save the .ccv file?");
-        string output = Console.ReadLine().Trim('"');
+        string output = ReadRequiredPath("Where to save the .ccv file?");
         output = Path.ChangeExtension(output, ".ccv");
 
         Console.WriteLine("Converting...");
-        var video = CVC.Encoder.Converter.ConvertFromVideo(new FFmpeg(), source, File.Open(output, FileMode.OpenOrCreate), width, height, colors);
+        using var destination = File.Open(output, FileMode.Create, FileAccess.Write);
+        CVC.Encoder.Converter.ConvertFromVideo(new FFmpeg(), source, destination, width, height, colors);
     }
 }

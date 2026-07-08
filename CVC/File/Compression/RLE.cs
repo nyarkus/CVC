@@ -7,6 +7,9 @@ public static class RLE
 {
     public static byte[] Compress(byte[] data)
     {
+        if (data is null)
+            throw new ArgumentNullException(nameof(data));
+
         using (var ms = new MemoryStream())
         {
             for (int i = 0; i < data.Length; i++)
@@ -29,6 +32,12 @@ public static class RLE
     
     public static byte[] Decompress(byte[] data)
     {
+        if (data is null)
+            throw new ArgumentNullException(nameof(data));
+
+        if (data.Length % 2 != 0)
+            throw new InvalidDataException("RLE payload length must be even.");
+
         using (var ms = new MemoryStream())
         {
             for (int i = 0; i < data.Length; i += 2)
@@ -49,6 +58,9 @@ public static class RLE
 
     public static byte[] Compress(sbyte[] data)
     {
+        if (data is null)
+            throw new ArgumentNullException(nameof(data));
+
         byte[] buffer = new byte[data.Length];
         Buffer.BlockCopy(data, 0, buffer, 0, data.Length);
         

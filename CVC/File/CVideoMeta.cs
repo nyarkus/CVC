@@ -22,6 +22,8 @@ public class CVideoMeta
         meta.Width = br.ReadInt32();
         meta.Height = br.ReadInt32();
         meta.ColorCount = br.ReadByte();
+
+        meta.Validate();
         
         return meta;
     }
@@ -36,6 +38,8 @@ public class CVideoMeta
         meta.Height = height;
         meta.ColorCount = colorCount;
 
+        meta.Validate();
+
         return meta;
     }
 
@@ -46,5 +50,23 @@ public class CVideoMeta
         writer.Write(Width);
         writer.Write(Height);
         writer.Write(ColorCount);
+    }
+
+    private void Validate()
+    {
+        if (FileVersion != CurrentVersion)
+            throw new InvalidDataException($"Unsupported CVC file version: {FileVersion}.");
+
+        if (double.IsNaN(Fps) || double.IsInfinity(Fps) || Fps <= 0)
+            throw new InvalidDataException("FPS must be greater than zero.");
+
+        if (Width <= 0)
+            throw new InvalidDataException("Width must be greater than zero.");
+
+        if (Height <= 0)
+            throw new InvalidDataException("Height must be greater than zero.");
+
+        if (ColorCount < 2)
+            throw new InvalidDataException("Color count must be at least 2.");
     }
 }

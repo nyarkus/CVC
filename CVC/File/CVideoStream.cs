@@ -9,12 +9,12 @@ public class CVideoStream
     private long _position;
     private long _framesPosition;
     
-    private byte[] _lastIntraCodedFrame;
+    private byte[]? _lastIntraCodedFrame;
     private List<KeyFrameInfo> _keyFrameIndex = new();
     
     private Stream _stream;
-    private BinaryReader _reader;
-    private BinaryWriter _writer;
+    private BinaryReader _reader = null!;
+    private BinaryWriter _writer = null!;
     private CVideoMeta _meta;
     private CVideoSteamMode _mode;
     
@@ -34,25 +34,45 @@ public class CVideoStream
         {
             _reader = new BinaryReader(stream, Encoding.ASCII, true);
             _length = _reader.ReadInt64();
+            if (_length < 0)
+                throw new InvalidDataException("Video stream length cannot be negative.");
+
             _framesPosition = _reader.BaseStream.Position;
             
             // Loading _keyFrameIndex
             _stream.Seek(-sizeof(long), SeekOrigin.End);
             var indexPosition = _reader.ReadInt64();
+            if (indexPosition < _framesPosition || indexPosition > _stream.Length - sizeof(long))
+                throw new InvalidDataException("Keyframe index position is outside the stream bounds.");
             
             _stream.Seek(indexPosition, SeekOrigin.Begin);
     
             var indexEntryCount = _reader.ReadInt32();
+            if (indexEntryCount < 0)
+                throw new InvalidDataException("Keyframe index entry count cannot be negative.");
     
             _keyFrameIndex = new List<KeyFrameInfo>(indexEntryCount);
+            long previousFrameNumber = -1;
             for (int i = 0; i < indexEntryCount; i++)
             {
-                _keyFrameIndex.Add(new KeyFrameInfo
+                var keyFrame = new KeyFrameInfo
                 {
                     FrameNumber = _reader.ReadInt64(),
                     StreamPosition = _reader.ReadInt64()
-                });
+                };
+
+                if (keyFrame.FrameNumber <= previousFrameNumber || keyFrame.FrameNumber < 0 || keyFrame.FrameNumber >= _length)
+                    throw new InvalidDataException("Keyframe index contains an invalid frame number.");
+
+                if (keyFrame.StreamPosition < _framesPosition || keyFrame.StreamPosition >= indexPosition)
+                    throw new InvalidDataException("Keyframe index contains an invalid stream position.");
+
+                _keyFrameIndex.Add(keyFrame);
+                previousFrameNumber = keyFrame.FrameNumber;
             }
+
+            if (_length > 0 && (_keyFrameIndex.Count == 0 || _keyFrameIndex[0].FrameNumber != 0))
+                throw new InvalidDataException("Video stream must start with a keyframe.");
             
             _stream.Seek(_framesPosition, SeekOrigin.Begin);
         }
@@ -76,7 +96,7 @@ public class CVideoStream
 
             frameType = (FrameType)_reader.ReadByte();
             int frameLength = _reader.ReadInt32();
-            frame = _reader.ReadBytes(frameLength);
+            frame = ReadExactBytes(frameLength);
 
             _position++;
         }
@@ -88,39 +108,31 @@ public class CVideoStream
         if (frameType == FrameType.IntraCoded)
         {
             var decompressedFrame = RLE.Decompress(Brotli.Decompress(frame));
+            ValidateDecodedFrameLength(decompressedFrame.Length, "I-frame");
             
             _lastIntraCodedFrame = decompressedFrame;
             return decompressedFrame;
         }
-        else // if(frameType == FrameType.PredictedFrame)
+        else if (frameType == FrameType.PredictedFrame)
         {
+            if (_lastIntraCodedFrame is null)
+                throw new InvalidDataException("Predicted frame cannot be decoded before an intra-coded frame.");
+
             var decompressedFrame = RLE.DecompressAsSBytes(Brotli.Decompress(frame));
+            ValidateDecodedFrameLength(decompressedFrame.Length, "P-frame");
             
             var result = PFrameDecoder.Instance.Convert(_lastIntraCodedFrame, decompressedFrame, _meta.Width, _meta.Height);
             _lastIntraCodedFrame = result;
             
             return result;
         }
+
+        throw new InvalidDataException($"Unknown frame type: {frameType}.");
     }
 
     public void SkipFrame()
     {
-        _semaphore.WaitOne();
-
-        try
-        {
-            if (_position >= _length)
-                return;
-
-            _ = (FrameType)_reader.ReadByte();
-            var frameLength = _reader.ReadInt32();
-            _ = _reader.ReadBytes(frameLength);
-            _position++;
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
+        _ = ReadFrame();
     }
     
     public long Seek(long offset, SeekOrigin origin)
@@ -227,6 +239,8 @@ public class CVideoStream
     {
         if (!_isWritingStarted)
             throw new InvalidOperationException();
+
+        ValidateSourceFrame(frame);
         
         if (_position == 0)
         {
@@ -235,21 +249,26 @@ public class CVideoStream
             return;
         }
 
-        _position++;
+        if (_lastIntraCodedFrame is null)
+            throw new InvalidOperationException("Cannot encode a predicted frame before an intra-coded frame.");
+
         var pFrame = PFrameEncoder.Instance.Convert(_lastIntraCodedFrame, frame, _meta.Width, _meta.Height);
         
         double sum = 0;
         for (int i = 0; i < pFrame.Length; i++)
         {
-            sum += pFrame[i];
+            int delta = pFrame[i];
+            sum += delta < 0 ? -delta : delta;
         }
 
-        var average = Math.Abs(pFrame.Length > 0 ? sum / pFrame.Length : 0);
+        var average = pFrame.Length > 0 ? sum / pFrame.Length : 0;
         
-        if(average <= PFrameK)
+        if(average <= PFrameK && CanApplyPFrameLosslessly(_lastIntraCodedFrame, frame, pFrame))
             EncodePFrame(frame, pFrame);
         else
             EncodeIFrame(frame);
+
+        _position++;
     }
 
     /// <param name="frame">Source frame</param>
@@ -261,9 +280,10 @@ public class CVideoStream
             StreamPosition = _writer.BaseStream.Position
         });
         
-        _lastIntraCodedFrame = frame;
+        var stableFrame = frame.ToArray();
+        _lastIntraCodedFrame = stableFrame;
         
-        var rle = RLE.Compress(frame);
+        var rle = RLE.Compress(stableFrame);
         var compressed = Brotli.Compress(rle);
         
         _writer.Write((byte)FrameType.IntraCoded);
@@ -275,7 +295,7 @@ public class CVideoStream
     /// <param name="pFrame">Calculated PFrame</param>
     private void EncodePFrame(byte[] sourceFrame, sbyte[] pFrame)
     {
-        _lastIntraCodedFrame = sourceFrame;
+        _lastIntraCodedFrame = sourceFrame.ToArray();
         
         var rle = RLE.Compress(pFrame);
         var compressed = Brotli.Compress(rle);
@@ -283,6 +303,62 @@ public class CVideoStream
         _writer.Write((byte)FrameType.PredictedFrame);
         _writer.Write(compressed.Length);
         _writer.Write(compressed);
+    }
+
+    private byte[] ReadExactBytes(int count)
+    {
+        if (count < 0)
+            throw new InvalidDataException("Frame payload length cannot be negative.");
+
+        byte[] data = _reader.ReadBytes(count);
+        if (data.Length != count)
+            throw new EndOfStreamException($"Expected {count} frame payload bytes, got {data.Length}.");
+
+        return data;
+    }
+
+    private int GetExpectedFrameLength()
+    {
+        try
+        {
+            return checked(_meta.Width * _meta.Height);
+        }
+        catch (OverflowException ex)
+        {
+            throw new InvalidDataException("Video frame dimensions are too large.", ex);
+        }
+    }
+
+    private void ValidateSourceFrame(byte[] frame)
+    {
+        if (frame is null)
+            throw new ArgumentNullException(nameof(frame));
+
+        int expectedLength = GetExpectedFrameLength();
+        if (frame.Length != expectedLength)
+        {
+            throw new ArgumentException(
+                $"Source frame length must be exactly {expectedLength} bytes for a {_meta.Width}x{_meta.Height} frame.",
+                nameof(frame));
+        }
+    }
+
+    private void ValidateDecodedFrameLength(int actualLength, string frameKind)
+    {
+        int expectedLength = GetExpectedFrameLength();
+        if (actualLength != expectedLength)
+            throw new InvalidDataException($"{frameKind} decoded to {actualLength} bytes, expected {expectedLength}.");
+    }
+
+    private static bool CanApplyPFrameLosslessly(byte[] baseFrame, byte[] targetFrame, sbyte[] pFrame)
+    {
+        for (int i = 0; i < pFrame.Length; i++)
+        {
+            if (baseFrame[i] + pFrame[i] != targetFrame[i])
+                return false;
+        }
+
+        return true;
     }
     #endregion
 }

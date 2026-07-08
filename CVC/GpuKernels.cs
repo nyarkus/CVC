@@ -12,9 +12,18 @@ public static class GpuKernels
         ArrayView2D<int, Stride2D.DenseX> output, 
         ArrayView<int> properties)
     {
-        float k = (float)properties[1] / properties[0];
-        int value = (int)(input[index] / k + 0.5f);
-        output[index] = XMath.Clamp(value, 0, properties[0] - 1);
+        int charCount = properties[0];
+        int colorCount = properties[1];
+
+        if (charCount <= 1 || colorCount <= 1)
+        {
+            output[index] = 0;
+            return;
+        }
+
+        float scale = (float)(charCount - 1) / (colorCount - 1);
+        int value = (int)(input[index] * scale + 0.5f);
+        output[index] = XMath.Clamp(value, 0, charCount - 1);
     }
     
     public static void EncodeKernel(
