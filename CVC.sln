@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Converter", "Converter\Conv
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cvcutil", "cvcutil\cvcutil.csproj", "{F8BA2843-7625-4D69-A286-A8E38C08A54A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CVC.Tests", "CVC.Tests\CVC.Tests.csproj", "{CCB26A94-C834-4E57-9D4F-F23E9A8D03A9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{F8BA2843-7625-4D69-A286-A8E38C08A54A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8BA2843-7625-4D69-A286-A8E38C08A54A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8BA2843-7625-4D69-A286-A8E38C08A54A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CCB26A94-C834-4E57-9D4F-F23E9A8D03A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CCB26A94-C834-4E57-9D4F-F23E9A8D03A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CCB26A94-C834-4E57-9D4F-F23E9A8D03A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CCB26A94-C834-4E57-9D4F-F23E9A8D03A9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
