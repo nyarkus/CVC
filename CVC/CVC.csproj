@@ -10,7 +10,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Google.FlatBuffers" Version="24.12.23" />
+		<PackageReference Include="Google.FlatBuffers" Version="25.2.10" />
 		<PackageReference Include="ILGPU" Version="1.5.3" />
 		<PackageReference Include="ILGPU.Algorithms" Version="1.5.3" />
 		<PackageReference Include="ManagedBass" Version="4.0.2" />
