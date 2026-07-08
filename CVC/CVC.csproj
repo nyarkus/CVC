@@ -7,6 +7,13 @@
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 		<SupportedOSPlatformVersion>8.0</SupportedOSPlatformVersion>
+		<Version>2.0.0</Version>
+		<Authors>nyarkus</Authors>
+		<Copyright>Copyright (c) 2025 Yahor Klimenko </Copyright>
+		<RepositoryUrl>https://github.com/nyarkus/CVC/</RepositoryUrl>
+		<Company>nyarkus</Company>
+		<AssemblyVersion>2.0.0</AssemblyVersion>
+		<FileVersion>2.0.0</FileVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
