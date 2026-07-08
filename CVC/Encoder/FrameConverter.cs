@@ -1,9 +1,6 @@
-﻿using CVC;
-using ILGPU;
+﻿using ILGPU;
 using ILGPU.Runtime;
 using SkiaSharp;
-using System;
-using System.IO;
 using System.Runtime.InteropServices;
 
 namespace CVC.Encoder;

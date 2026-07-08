@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CVC.Decoder;
+using CVC.File;
 using ManagedBass;
 using PlaybackState = ManagedBass.PlaybackState;
 

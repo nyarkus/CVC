@@ -1,4 +1,4 @@
-namespace CVC;
+namespace CVC.File;
 
 public enum FrameType : byte
 {

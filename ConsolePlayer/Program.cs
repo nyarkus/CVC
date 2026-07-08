@@ -2,6 +2,7 @@
 using System.Security.Principal;
 using Microsoft.Win32;
 using ConsolePlayer;
+using CVC.File;
 
 class Program
 {

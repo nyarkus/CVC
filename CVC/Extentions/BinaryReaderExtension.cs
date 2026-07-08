@@ -1,4 +1,4 @@
-namespace System.IO;
+namespace CVC.Extentions;
 
 public static class BinaryReaderExtension
 {

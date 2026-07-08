@@ -1,4 +1,4 @@
-namespace CVC;
+namespace CVC.File;
 
 internal struct KeyFrameInfo
 {

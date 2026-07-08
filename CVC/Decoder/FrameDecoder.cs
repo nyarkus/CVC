@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CVC.File;
 
 namespace CVC.Decoder
 {
@@ -30,15 +31,6 @@ namespace CVC.Decoder
             }
         }
 
-        public bool BufferIsFull
-        {
-            get
-            {
-                lock (_sync)
-                    return CountBufferedFramesAhead(_requestedFrame) >= GetTargetBufferSize(_requestedFrame);
-            }
-        }
-
         public FrameDecoder(CVideoFile video, string chars = " .:-=+*#%@")
         {
             if (video.VideoStream is null)
@@ -63,31 +55,9 @@ namespace CVC.Decoder
             }
         }
 
-        public void RecalculateBuffer()
-        {
-            Start();
-            _worker?.Wait();
-        }
-
-        public void Seek(int targetFrame)
-        {
-            RequestFrame(targetFrame, forceSeek: true);
-        }
-
         public void RequestFrame(int frame)
         {
             RequestFrame(frame, forceSeek: false);
-        }
-
-        public string? ReadFrame(int frame)
-        {
-            RequestFrame(frame);
-
-            lock (_sync)
-            {
-                ThrowWorkerErrorIfAny();
-                return _bufferedFrames.TryGetValue(frame, out var content) ? content : null;
-            }
         }
 
         public string? WaitForFrame(int frame, TimeSpan timeout, CancellationToken cancellationToken = default)

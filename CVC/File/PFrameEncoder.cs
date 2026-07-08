@@ -1,7 +1,7 @@
 using ILGPU;
 using ILGPU.Runtime;
 
-namespace CVC;
+namespace CVC.File;
 
 public class PFrameEncoder : IDisposable
 {

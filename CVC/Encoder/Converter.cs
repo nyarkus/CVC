@@ -1,3 +1,5 @@
+using CVC.File;
+
 namespace CVC.Encoder;
 
 public class Converter

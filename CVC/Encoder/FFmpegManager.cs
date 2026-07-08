@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
-using System.IO.Compression;
 using System.Text.RegularExpressions;
 
 namespace CVC.Encoder;
@@ -13,52 +12,11 @@ public abstract class FFmpegManager
     {
         if(OperatingSystem.IsWindows())
             _ffmpegPath = "ffmpeg.exe";
-        else if(OperatingSystem.IsLinux())
+        else if(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             _ffmpegPath = "ffmpeg";
     }
 
     public abstract void CheckFFmpeg();
-    public MemoryStream ExtractSoundToMemory(string videoPath)
-    {
-        CheckFFmpeg();
-
-        var memory = new MemoryStream();
-        var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = _ffmpegPath,
-                Arguments = $"-i \"{videoPath}\" -f mp3 pipe:1",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            }
-        };
-
-        process.Start();
-
-        Task.Run(() =>
-        {
-            using (var errorStream = process.StandardError)
-            {
-                string errorMessage;
-                while ((errorMessage = errorStream.ReadLine()) != null)
-                {
-                    Console.WriteLine(errorMessage);
-                }
-            }
-        });
-
-        using (var outputStream = process.StandardOutput.BaseStream)
-        {
-            process.StandardOutput.BaseStream.CopyTo(memory);
-        }
-
-        process.WaitForExit();
-        memory.Position = 0;
-        return memory;
-    }
     
     public MemoryStream ExtractAndResampleSoundToMemory(string videoPath)
     {

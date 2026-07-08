@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace CVC;
+namespace CVC.File;
 
 public class CVideoFile
 {

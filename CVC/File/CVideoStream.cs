@@ -1,7 +1,7 @@
 using System.Text;
 using CVC.File.Compression;
 
-namespace CVC;
+namespace CVC.File;
 
 public class CVideoStream
 {
