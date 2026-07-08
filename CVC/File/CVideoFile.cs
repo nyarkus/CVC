@@ -25,6 +25,9 @@ public class CVideoFile
         if (soundLength < 0)
             throw new InvalidDataException("Sound payload length cannot be negative.");
 
+        if (stream.CanSeek && soundLength > stream.Length - stream.Position)
+            throw new EndOfStreamException($"Expected {soundLength} sound payload bytes, got only {stream.Length - stream.Position} remaining bytes.");
+
         file.Sound = br.ReadBytes(soundLength);
         if (file.Sound.Length != soundLength)
             throw new EndOfStreamException($"Expected {soundLength} sound payload bytes, got {file.Sound.Length}.");

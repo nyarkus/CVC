@@ -21,8 +21,16 @@ public static class Brotli
     
     public static byte[] Decompress(byte[] data)
     {
+        return Decompress(data, int.MaxValue);
+    }
+
+    public static byte[] Decompress(byte[] data, int maxOutputBytes)
+    {
         if (data is null)
             throw new ArgumentNullException(nameof(data));
+
+        if (maxOutputBytes < 0)
+            throw new ArgumentOutOfRangeException(nameof(maxOutputBytes));
 
         using (var inputStream = new MemoryStream(data))
         {
@@ -30,7 +38,18 @@ public static class Brotli
             {
                 using (var compressedStream = new BrotliStream(inputStream, CompressionMode.Decompress))
                 {
-                    compressedStream.CopyTo(outputStream);
+                    var buffer = new byte[81920];
+                    while (true)
+                    {
+                        var read = compressedStream.Read(buffer, 0, buffer.Length);
+                        if (read == 0)
+                            break;
+
+                        if (outputStream.Length + read > maxOutputBytes)
+                            throw new InvalidDataException("Brotli payload exceeds the maximum decoded size.");
+
+                        outputStream.Write(buffer, 0, read);
+                    }
                 }
                 return outputStream.ToArray();
             }

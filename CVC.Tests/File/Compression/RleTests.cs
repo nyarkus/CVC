@@ -18,4 +18,10 @@ public class RleTests
         Assert.Equal(source, decompressed);
         Assert.True(compressed.Length < source.Length);
     }
+
+    [Fact]
+    public void RejectsPayloadsThatExceedDecodedLimit()
+    {
+        Assert.Throws<InvalidDataException>(() => RLE.Decompress([3, 7], maxOutputBytes: 2));
+    }
 }

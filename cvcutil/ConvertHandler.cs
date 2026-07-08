@@ -19,11 +19,15 @@ public static class ConvertHandler
             Validate(input, output, width, height, colors, fps, pFrameK, overwrite);
 
             var outputPath = GetOutputPath(input, output);
-            var fileMode = overwrite ? FileMode.Create : FileMode.CreateNew;
+            var outputFullPath = Path.GetFullPath(outputPath);
+            var outputDirectory = Path.GetDirectoryName(outputFullPath) ?? Directory.GetCurrentDirectory();
+            var tempPath = Path.Combine(
+                outputDirectory,
+                $".{Path.GetFileName(outputFullPath)}.{Guid.NewGuid():N}.tmp");
 
             Console.WriteLine("Converting...");
             Console.WriteLine($"Input:\t{input}");
-            Console.WriteLine($"Output:\t{outputPath}");
+            Console.WriteLine($"Output:\t{outputFullPath}");
             Console.WriteLine($"Size:\t{width}x{height}");
             Console.WriteLine($"Colors:\t{colors}");
             if (fps.HasValue)
@@ -31,21 +35,35 @@ public static class ConvertHandler
             if (pFrameK.HasValue)
                 Console.WriteLine($"PFrame:\t{pFrameK.Value}");
 
-            using var destination = File.Open(outputPath, fileMode, FileAccess.Write);
-            CVC.Encoder.Converter.ConvertFromVideo(
-                new FFmpeg(),
-                input,
-                destination,
-                width,
-                height,
-                colors,
-                fps,
-                pFrameK,
-                framesEncoded =>
+            try
+            {
+                using (var destination = File.Open(tempPath, FileMode.CreateNew, FileAccess.Write))
                 {
-                    if (framesEncoded % 30 == 0)
-                        Console.Write($"\rEncoded frames: {framesEncoded}");
-                });
+                    CVC.Encoder.Converter.ConvertFromVideo(
+                        new FFmpeg(),
+                        input,
+                        destination,
+                        width,
+                        height,
+                        colors,
+                        fps,
+                        pFrameK,
+                        framesEncoded =>
+                        {
+                            if (framesEncoded % 30 == 0)
+                                Console.Write($"\rEncoded frames: {framesEncoded}");
+                        });
+                }
+
+                File.Move(tempPath, outputFullPath, overwrite);
+            }
+            catch
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+
+                throw;
+            }
 
             Console.WriteLine();
             Console.WriteLine("Done.");

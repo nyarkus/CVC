@@ -46,13 +46,6 @@ public static class ConsolePlayer
 
         try
         {
-            if (!Bass.Init())
-            {
-                Console.WriteLine($"Failed to initialize BASS: {Bass.LastError}");
-                return;
-            }
-
-            bassInitialized = true;
             PrepareConsole(video);
 
             using var decoder = new FrameDecoder(video, chars);
@@ -63,16 +56,43 @@ public static class ConsolePlayer
                 TimeSpan.FromSeconds(10),
                 cancellation.Token);
 
-            var audio = video.Sound.ToArray();
-            streamHandle = Bass.CreateStream(audio, 0, audio.Length, BassFlags.Default);
-            if (streamHandle == 0)
+            if (video.Sound.Length > 0)
             {
-                Console.WriteLine($"Failed to load audio: {Bass.LastError}");
-                return;
-            }
+                if (!Bass.Init())
+                {
+                    Console.WriteLine($"Failed to initialize BASS: {Bass.LastError}");
+                    return;
+                }
 
-            Bass.ChannelPlay(streamHandle);
-            RunPlaybackLoop(video, decoder, streamHandle, cancellation.Token);
+                bassInitialized = true;
+
+                var audio = video.Sound.ToArray();
+                streamHandle = Bass.CreateStream(audio, 0, audio.Length, BassFlags.Default);
+                if (streamHandle == 0)
+                {
+                    Console.WriteLine($"Failed to load audio: {Bass.LastError}");
+                    return;
+                }
+
+                Bass.ChannelPlay(streamHandle);
+                RunPlaybackLoop(
+                    video,
+                    decoder,
+                    cancellation.Token,
+                    () => GetAudioFrame(streamHandle, video.Meta.Fps),
+                    () => Bass.ChannelIsActive(streamHandle) == PlaybackState.Playing);
+            }
+            else
+            {
+                var stopwatch = Stopwatch.StartNew();
+                var duration = TimeSpan.FromSeconds((video.VideoStream?.Length ?? 0) / video.Meta.Fps);
+                RunPlaybackLoop(
+                    video,
+                    decoder,
+                    cancellation.Token,
+                    () => (int)(stopwatch.Elapsed.TotalSeconds * video.Meta.Fps),
+                    () => stopwatch.Elapsed < duration);
+            }
         }
         finally
         {
@@ -90,20 +110,21 @@ public static class ConsolePlayer
     private static void RunPlaybackLoop(
         CVideoFile video,
         FrameDecoder decoder,
-        int streamHandle,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<int> getTargetFrame,
+        Func<bool> shouldContinue)
     {
         var frameDuration = TimeSpan.FromSeconds(1.0 / video.Meta.Fps);
         var maxFrameWait = TimeSpan.FromMilliseconds(Math.Max(1, frameDuration.TotalMilliseconds * 0.75));
         var lastDisplayedFrame = -1;
         var totalFrames = (int)(video.VideoStream?.Length ?? 0);
 
-        while (!cancellationToken.IsCancellationRequested &&
-               Bass.ChannelIsActive(streamHandle) == PlaybackState.Playing)
+        if (totalFrames <= 0)
+            return;
+
+        while (!cancellationToken.IsCancellationRequested && shouldContinue())
         {
-            var targetFrame = GetAudioFrame(streamHandle, video.Meta.Fps);
-            if (totalFrames > 0)
-                targetFrame = Math.Clamp(targetFrame, 0, totalFrames - 1);
+            var targetFrame = Math.Clamp(getTargetFrame(), 0, totalFrames - 1);
 
             if (targetFrame == lastDisplayedFrame)
             {

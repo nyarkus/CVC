@@ -32,8 +32,16 @@ public static class RLE
     
     public static byte[] Decompress(byte[] data)
     {
+        return Decompress(data, int.MaxValue);
+    }
+
+    public static byte[] Decompress(byte[] data, int maxOutputBytes)
+    {
         if (data is null)
             throw new ArgumentNullException(nameof(data));
+
+        if (maxOutputBytes < 0)
+            throw new ArgumentOutOfRangeException(nameof(maxOutputBytes));
 
         if (data.Length % 2 != 0)
             throw new InvalidDataException("RLE payload length must be even.");
@@ -44,6 +52,9 @@ public static class RLE
             {
                 byte runLength = data[i];
                 byte value = data[i + 1];
+
+                if (ms.Length + runLength > maxOutputBytes)
+                    throw new InvalidDataException("RLE payload exceeds the maximum decoded size.");
                 
                 for (int j = 0; j < runLength; j++)
                 {
@@ -69,7 +80,12 @@ public static class RLE
     
     public static sbyte[] DecompressAsSBytes(byte[] data)
     {
-        var result = Decompress(data);
+        return DecompressAsSBytes(data, int.MaxValue);
+    }
+
+    public static sbyte[] DecompressAsSBytes(byte[] data, int maxOutputBytes)
+    {
+        var result = Decompress(data, maxOutputBytes);
         sbyte[] buffer = new sbyte[result.Length];
         
         Buffer.BlockCopy(result, 0, buffer, 0, result.Length);

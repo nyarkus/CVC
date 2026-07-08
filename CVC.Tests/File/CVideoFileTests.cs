@@ -1,4 +1,5 @@
 using CVC.File;
+using System.Text;
 
 namespace CVC.Tests;
 
@@ -53,5 +54,22 @@ public class CVideoFileTests
         Assert.Equal(firstFrame, video.VideoStream.ReadFrame());
         Assert.Equal(predictedFrame, video.VideoStream.ReadFrame());
         Assert.Empty(video.VideoStream.ReadFrame());
+    }
+
+    [Fact]
+    public void RejectsTruncatedSoundPayload()
+    {
+        var meta = CVideoMeta.Create(fps: 24, width: 2, height: 2, colorCount: 16);
+        using var stream = new MemoryStream();
+        using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
+        {
+            meta.Save(writer);
+            writer.Write(16);
+            writer.Write(new byte[] { 1, 2, 3 });
+        }
+
+        stream.Position = 0;
+
+        Assert.Throws<EndOfStreamException>(() => CVideoFile.FromStream(stream));
     }
 }

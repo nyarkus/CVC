@@ -25,6 +25,9 @@ public abstract class FFmpegManager
     {
         CheckFFmpeg();
 
+        if (!HasAudioStream(videoPath))
+            return new MemoryStream();
+
         var memory = new MemoryStream();
         var process = new Process
         {
@@ -83,6 +86,21 @@ public abstract class FFmpegManager
             return double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
 
         throw new Exception("Failed to get the FPS of the video");
+    }
+
+    private bool HasAudioStream(string videoPath)
+    {
+        var process = new Process
+        {
+            StartInfo = CreateStartInfo("-i", videoPath)
+        };
+
+        process.Start();
+
+        string output = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        return Regex.IsMatch(output, @"Stream\s+#\S+:\s+Audio:", RegexOptions.IgnoreCase);
     }
 
     public void ExtractFramesToMemory(string videoPath, double fps, Action<MemoryStream> onFrameReceived)

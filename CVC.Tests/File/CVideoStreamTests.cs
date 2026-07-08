@@ -51,4 +51,18 @@ public class CVideoStreamTests
 
         Assert.Equal("frame", exception.ParamName);
     }
+
+    [Fact]
+    public void SeeksToEnd()
+    {
+        var meta = CVideoMeta.Create(fps: 24, width: 2, height: 2, colorCount: 16);
+        byte[] frame = [1, 2, 3, 4];
+
+        using var stream = CVideoTestFile.Create(meta, sound: [], frame);
+        var video = CVideoFile.FromStream(stream);
+        var videoStream = Assert.IsType<CVideoStream>(video.VideoStream);
+
+        Assert.Equal(1, videoStream.Seek(0, SeekOrigin.End));
+        Assert.Empty(videoStream.ReadFrame());
+    }
 }

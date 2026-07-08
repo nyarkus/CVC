@@ -8,6 +8,7 @@ public class CVideoStream
     private long _length;
     private long _position;
     private long _framesPosition;
+    private long _indexPosition;
     
     private byte[]? _lastIntraCodedFrame;
     private List<KeyFrameInfo> _keyFrameIndex = new();
@@ -41,15 +42,20 @@ public class CVideoStream
             
             // Loading _keyFrameIndex
             _stream.Seek(-sizeof(long), SeekOrigin.End);
-            var indexPosition = _reader.ReadInt64();
-            if (indexPosition < _framesPosition || indexPosition > _stream.Length - sizeof(long))
+            _indexPosition = _reader.ReadInt64();
+            if (_indexPosition < _framesPosition || _indexPosition > _stream.Length - sizeof(long) - sizeof(int))
                 throw new InvalidDataException("Keyframe index position is outside the stream bounds.");
             
-            _stream.Seek(indexPosition, SeekOrigin.Begin);
+            _stream.Seek(_indexPosition, SeekOrigin.Begin);
     
             var indexEntryCount = _reader.ReadInt32();
             if (indexEntryCount < 0)
                 throw new InvalidDataException("Keyframe index entry count cannot be negative.");
+
+            var indexPayloadLength = _stream.Length - sizeof(long) - _indexPosition - sizeof(int);
+            var maxIndexEntryCount = indexPayloadLength / (sizeof(long) * 2);
+            if (indexEntryCount > maxIndexEntryCount || indexEntryCount > _length)
+                throw new InvalidDataException("Keyframe index entry count is outside the stream bounds.");
     
             _keyFrameIndex = new List<KeyFrameInfo>(indexEntryCount);
             long previousFrameNumber = -1;
@@ -64,7 +70,7 @@ public class CVideoStream
                 if (keyFrame.FrameNumber <= previousFrameNumber || keyFrame.FrameNumber < 0 || keyFrame.FrameNumber >= _length)
                     throw new InvalidDataException("Keyframe index contains an invalid frame number.");
 
-                if (keyFrame.StreamPosition < _framesPosition || keyFrame.StreamPosition >= indexPosition)
+                if (keyFrame.StreamPosition < _framesPosition || keyFrame.StreamPosition >= _indexPosition)
                     throw new InvalidDataException("Keyframe index contains an invalid stream position.");
 
                 _keyFrameIndex.Add(keyFrame);
@@ -107,7 +113,10 @@ public class CVideoStream
 
         if (frameType == FrameType.IntraCoded)
         {
-            var decompressedFrame = RLE.Decompress(Brotli.Decompress(frame));
+            int expectedFrameLength = GetExpectedFrameLength();
+            var decompressedFrame = RLE.Decompress(
+                Brotli.Decompress(frame, GetMaxRleFrameLength()),
+                expectedFrameLength);
             ValidateDecodedFrameLength(decompressedFrame.Length, "I-frame");
             
             _lastIntraCodedFrame = decompressedFrame;
@@ -118,7 +127,10 @@ public class CVideoStream
             if (_lastIntraCodedFrame is null)
                 throw new InvalidDataException("Predicted frame cannot be decoded before an intra-coded frame.");
 
-            var decompressedFrame = RLE.DecompressAsSBytes(Brotli.Decompress(frame));
+            int expectedFrameLength = GetExpectedFrameLength();
+            var decompressedFrame = RLE.DecompressAsSBytes(
+                Brotli.Decompress(frame, GetMaxRleFrameLength()),
+                expectedFrameLength);
             ValidateDecodedFrameLength(decompressedFrame.Length, "P-frame");
             
             var result = PFrameDecoder.Instance.Convert(_lastIntraCodedFrame, decompressedFrame, _meta.Width, _meta.Height);
@@ -156,11 +168,28 @@ public class CVideoStream
                 throw new ArgumentException("Invalid SeekOrigin", nameof(origin));
         }
 
-        if (targetPosition < 0 || targetPosition >= _length)
+        if (targetPosition < 0 || targetPosition > _length)
             throw new ArgumentOutOfRangeException(nameof(offset), "Seek position is outside the bounds of the stream");
     
         if (targetPosition == _position)
             return _position;
+
+        if (targetPosition == _length)
+        {
+            _semaphore.WaitOne();
+            try
+            {
+                _reader.BaseStream.Position = _indexPosition;
+                _position = _length;
+                _lastIntraCodedFrame = null;
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+
+            return _position;
+        }
     
         _semaphore.WaitOne();
         try
@@ -310,6 +339,9 @@ public class CVideoStream
         if (count < 0)
             throw new InvalidDataException("Frame payload length cannot be negative.");
 
+        if (_mode == CVideoSteamMode.Reading && _reader.BaseStream.Position + count > _indexPosition)
+            throw new EndOfStreamException("Frame payload extends beyond the video frame data.");
+
         byte[] data = _reader.ReadBytes(count);
         if (data.Length != count)
             throw new EndOfStreamException($"Expected {count} frame payload bytes, got {data.Length}.");
@@ -322,6 +354,19 @@ public class CVideoStream
         try
         {
             return checked(_meta.Width * _meta.Height);
+        }
+        catch (OverflowException ex)
+        {
+            throw new InvalidDataException("Video frame dimensions are too large.", ex);
+        }
+    }
+
+    private int GetMaxRleFrameLength()
+    {
+        int expectedLength = GetExpectedFrameLength();
+        try
+        {
+            return checked(expectedLength * 2);
         }
         catch (OverflowException ex)
         {
