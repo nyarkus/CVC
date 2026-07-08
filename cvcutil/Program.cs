@@ -1,0 +1,78 @@
+﻿using System.CommandLine;
+
+namespace cvcutil;
+
+class Program
+{
+    static int Main(string[] args)
+    {
+        var rootCommand = new RootCommand("CVC util");
+        
+        var playCommand = new Command("play", "Plays a .ccv file");
+        var playPathArgument = new Argument<string>("path");
+        playCommand.Arguments.Add(playPathArgument);
+        var charsetOption = new Option<string>("--charset");
+        charsetOption.Description = "Which symbols to use in the render. In order of increasing brightness";
+        charsetOption.DefaultValueFactory = _ => " .:-=+*#%@";
+        playCommand.Options.Add(charsetOption);
+        playCommand.SetAction(parseResult =>
+            PlayHandler.Play(
+                parseResult.GetValue(playPathArgument)!,
+                parseResult.GetValue(charsetOption)!));
+
+        var convertCommand = new Command("convert", "Converts a video file to .ccv");
+        var inputArgument = new Argument<string>("input");
+        var outputOption = new Option<string?>("--output");
+        outputOption.Aliases.Add("-o");
+        outputOption.Description = "Where to save the .ccv file. Defaults to input path with .ccv extension.";
+
+        var widthOption = new Option<int>("--width");
+        widthOption.Aliases.Add("-w");
+        widthOption.Description = "Output width in console characters.";
+        widthOption.Required = true;
+
+        var heightOption = new Option<int>("--height");
+        heightOption.Aliases.Add("-h");
+        heightOption.Description = "Output height in console characters.";
+        heightOption.Required = true;
+
+        var colorsOption = new Option<byte>("--colors");
+        colorsOption.Aliases.Add("-c");
+        colorsOption.Description = "Number of grayscale levels to encode. Valid range: 2-255.";
+        colorsOption.DefaultValueFactory = _ => (byte)10;
+
+        var fpsOption = new Option<double?>("--fps");
+        fpsOption.Description = "Output FPS. Defaults to the source video FPS.";
+
+        var pFrameKOption = new Option<double?>("--pframe-k");
+        pFrameKOption.Description = "P-frame threshold. Lower values create more keyframes.";
+        pFrameKOption.DefaultValueFactory = _ => 0.01;
+
+        var overwriteOption = new Option<bool>("--overwrite");
+        overwriteOption.Description = "Overwrite the output file if it already exists.";
+
+        convertCommand.Arguments.Add(inputArgument);
+        convertCommand.Options.Add(outputOption);
+        convertCommand.Options.Add(widthOption);
+        convertCommand.Options.Add(heightOption);
+        convertCommand.Options.Add(colorsOption);
+        convertCommand.Options.Add(fpsOption);
+        convertCommand.Options.Add(pFrameKOption);
+        convertCommand.Options.Add(overwriteOption);
+        convertCommand.SetAction(parseResult =>
+            ConvertHandler.Convert(
+                parseResult.GetValue(inputArgument)!,
+                parseResult.GetValue(outputOption),
+                parseResult.GetValue(widthOption),
+                parseResult.GetValue(heightOption),
+                parseResult.GetValue(colorsOption),
+                parseResult.GetValue(fpsOption),
+                parseResult.GetValue(pFrameKOption),
+                parseResult.GetValue(overwriteOption)));
+
+        rootCommand.Subcommands.Add(playCommand);
+        rootCommand.Subcommands.Add(convertCommand);
+
+        return rootCommand.Parse(args).Invoke();
+    }
+}
