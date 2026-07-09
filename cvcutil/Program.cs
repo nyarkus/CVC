@@ -11,14 +11,22 @@ class Program
         var playCommand = new Command("play", "Plays a .ccv file");
         var playPathArgument = new Argument<string>("path");
         playCommand.Arguments.Add(playPathArgument);
+        
         var charsetOption = new Option<string>("--charset");
         charsetOption.Description = "Which symbols to use in the render. In order of increasing brightness";
-        charsetOption.DefaultValueFactory = _ => " .:-=+*#%@";
+        
+        var charsetPresetOption = new Option<string?>("--charset-preset");
+        charsetPresetOption.Aliases.Add("-p");
+        charsetPresetOption.Description = "Character set preset. Presets: classic, bricks, binary ";
+        charsetPresetOption.DefaultValueFactory = _ => "classic";
+        
         playCommand.Options.Add(charsetOption);
+        playCommand.Options.Add(charsetPresetOption);
         playCommand.SetAction(parseResult =>
             PlayHandler.Play(
                 parseResult.GetValue(playPathArgument)!,
-                parseResult.GetValue(charsetOption)!));
+                parseResult.GetValue(charsetOption),
+                parseResult.GetValue(charsetPresetOption)));
 
         var convertCommand = new Command("convert", "Converts a video file to .ccv");
         var inputArgument = new Argument<string>("input");
