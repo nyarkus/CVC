@@ -19,7 +19,7 @@ public class CVideoMeta
     public static CVideoMeta FromStream(Stream stream)
     {
         var meta = new CVideoMeta();
-        using BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true);
+        using BinaryReader br = new BinaryReader(stream, Encoding.UTF8, true);
 
         meta.MagicHeader = br.ReadString();
         meta.ContainerVersion = br.ReadUInt16();

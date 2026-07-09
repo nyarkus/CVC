@@ -33,7 +33,7 @@ public class CVideoStream
         
         if (mode == CVideoSteamMode.Reading)
         {
-            _reader = new BinaryReader(stream, Encoding.ASCII, true);
+            _reader = new BinaryReader(stream, Encoding.UTF8, true);
             _length = _reader.ReadInt64();
             if (_length < 0)
                 throw new InvalidDataException("Video stream length cannot be negative.");
@@ -84,7 +84,7 @@ public class CVideoStream
         }
         else // mode == Writing
         {
-            _writer = new BinaryWriter(stream, Encoding.ASCII, true);
+            _writer = new BinaryWriter(stream, Encoding.UTF8, true);
         }
     }
 

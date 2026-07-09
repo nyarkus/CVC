@@ -16,7 +16,9 @@ public class CVideoFileTests
 
         var video = CVideoFile.FromStream(stream);
 
-        Assert.Equal(CVideoMeta.CurrentVersion, video.Meta.FileVersion);
+        Assert.Equal(CVideoMeta.CurrentMagicHeader, video.Meta.MagicHeader);
+        Assert.Equal(CVideoMeta.CurrentContainerVersion, video.Meta.ContainerVersion);
+        Assert.Equal(CVideoMeta.CurrentCodecVersion, video.Meta.CodecVersion);
         Assert.Equal(24, video.Meta.Fps);
         Assert.Equal(4, video.Meta.Width);
         Assert.Equal(2, video.Meta.Height);
@@ -61,7 +63,7 @@ public class CVideoFileTests
     {
         var meta = CVideoMeta.Create(fps: 24, width: 2, height: 2, colorCount: 16);
         using var stream = new MemoryStream();
-        using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
         {
             meta.Save(writer);
             writer.Write(16);

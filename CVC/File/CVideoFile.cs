@@ -39,7 +39,7 @@ public class CVideoFile
 
     internal void Save(Stream destination)
     {
-        using (BinaryWriter bw = new BinaryWriter(destination, Encoding.ASCII, true))
+        using (BinaryWriter bw = new BinaryWriter(destination, Encoding.UTF8, true))
         {
             Meta.Save(bw);
         

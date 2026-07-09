@@ -44,7 +44,7 @@ internal static class CVideoTestFile
             stream.Position = 0;
             _ = CVideoMeta.FromStream(stream);
 
-            using var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
             var soundLength = reader.ReadInt32();
             stream.Seek(soundLength, SeekOrigin.Current);
 
