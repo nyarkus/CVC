@@ -88,15 +88,15 @@ public static class ConvertHandler
             sb.AppendLine();
             sb.AppendLine(
                 $"Encoding Duration\t:\t{stats.Duration.ToString("g", System.Globalization.CultureInfo.InvariantCulture)}");
-            sb.AppendLine($"Output file size\t:\t{stats.OutputBytes} bytes");
+            sb.AppendLine($"Output file size\t:\t{FormatBytesSize(stats.OutputBytes)}");
             sb.AppendLine();
             sb.AppendLine($"IFrames count\t\t:\t{stats.IFrames.Count}");
-            sb.AppendLine($"Average IFrame size\t:\t{stats.IFrames.AverageBytes} bytes");
-            sb.AppendLine($"Worst IFrame size\t:\t{stats.IFrames.WorstBytes} bytes");
+            sb.AppendLine($"Average IFrame size\t:\t{FormatBytesSize(stats.IFrames.AverageBytes)}");
+            sb.AppendLine($"Worst IFrame size\t:\t{FormatBytesSize(stats.IFrames.WorstBytes)}");
             sb.AppendLine();
             sb.AppendLine($"PFrames count\t\t:\t{stats.PFrames.Count}");
-            sb.AppendLine($"Average PFrame size\t:\t{stats.PFrames.AverageBytes} bytes");
-            sb.AppendLine($"Worst PFrame size\t:\t{stats.PFrames.WorstBytes} bytes");
+            sb.AppendLine($"Average PFrame size\t:\t{FormatBytesSize(stats.PFrames.AverageBytes)}");
+            sb.AppendLine($"Worst PFrame size\t:\t{FormatBytesSize(stats.PFrames.WorstBytes)}");
             
             Console.WriteLine(sb.ToString());
             return 0;
@@ -208,5 +208,17 @@ public static class ConvertHandler
             CompressionLevel.NoCompression => "no",
             _ => mode.ToString()
         };
+    }
+
+    private static string FormatBytesSize(double bytes)
+    {
+        if (bytes < 1024)
+            return $"{bytes} bytes";
+        if (bytes < Math.Pow(1024, 2))
+            return $"{bytes / 1024} KiB";
+        if (bytes < Math.Pow(1024, 3))
+            return $"{bytes / Math.Pow(1024, 2)} MiB";
+        
+        return $"{bytes / Math.Pow(1024, 3)} GiB";
     }
 }
