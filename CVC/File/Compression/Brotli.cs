@@ -4,14 +4,14 @@ namespace CVC.File.Compression;
 
 public static class Brotli
 {
-    public static byte[] Compress(byte[] data)
+    public static byte[] Compress(byte[] data, CompressionLevel compressionLevel = CompressionLevel.Optimal)
     {
         if (data is null)
             throw new ArgumentNullException(nameof(data));
 
         using (var outputStream = new MemoryStream())
         {
-            using (var compressedStream = new BrotliStream(outputStream, CompressionLevel.Optimal))
+            using (var compressedStream = new BrotliStream(outputStream, compressionLevel))
             {
                 compressedStream.Write(data, 0, data.Length);
             }

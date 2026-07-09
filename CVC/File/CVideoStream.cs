@@ -141,11 +141,6 @@ public class CVideoStream
 
         throw new InvalidDataException($"Unknown frame type: {frameType}.");
     }
-
-    public void SkipFrame()
-    {
-        _ = ReadFrame();
-    }
     
     public long Seek(long offset, SeekOrigin origin)
     {
@@ -258,6 +253,13 @@ public class CVideoStream
     /// If the average delta of the changed pixels is less than or equal to this value, a PFrame will be created instead of an IFrame
     /// </summary>
     public double PFrameK = 0.01;
+
+    /// <summary>
+    /// Defines how the encoder chooses between I-frames and P-frames.
+    /// </summary>
+    public FrameEncodingMode EncodingMode = FrameEncodingMode.Fast;
+    
+    public System.IO.Compression.CompressionLevel BrotliCompressionLevel = System.IO.Compression.CompressionLevel.Optimal;
     
     /// <summary>
     /// Encodes frame
@@ -282,26 +284,72 @@ public class CVideoStream
             throw new InvalidOperationException("Cannot encode a predicted frame before an intra-coded frame.");
 
         var pFrame = PFrameEncoder.Instance.Convert(_lastIntraCodedFrame, frame, _meta.Width, _meta.Height);
-        
-        double sum = 0;
-        for (int i = 0; i < pFrame.Length; i++)
-        {
-            int delta = pFrame[i];
-            sum += delta < 0 ? -delta : delta;
-        }
 
-        var average = pFrame.Length > 0 ? sum / pFrame.Length : 0;
-        
-        if(average <= PFrameK && CanApplyPFrameLosslessly(_lastIntraCodedFrame, frame, pFrame))
-            EncodePFrame(frame, pFrame);
-        else
-            EncodeIFrame(frame);
+        switch (EncodingMode)
+        {
+            case FrameEncodingMode.Fast:
+                EncodeFast(frame, pFrame);
+                break;
+            case FrameEncodingMode.BestSize:
+                EncodeBestSize(frame, pFrame);
+                break;
+            case FrameEncodingMode.Hybrid:
+                EncodeHybrid(frame, pFrame);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(EncodingMode), EncodingMode, "Unknown frame encoding mode.");
+        }
 
         _position++;
     }
 
+    private void EncodeFast(byte[] frame, sbyte[] pFrame)
+    {
+        if (CalculateAverageDelta(pFrame) <= PFrameK && CanApplyPFrameLosslessly(_lastIntraCodedFrame!, frame, pFrame))
+            EncodePFrame(frame, pFrame);
+        else
+            EncodeIFrame(frame);
+    }
+
+    private void EncodeBestSize(byte[] frame, sbyte[] pFrame)
+    {
+        if (!CanApplyPFrameLosslessly(_lastIntraCodedFrame!, frame, pFrame))
+        {
+            EncodeIFrame(frame);
+            return;
+        }
+
+        var compressedIFrame = CompressIFrame(frame);
+        var compressedPFrame = CompressPFrame(pFrame);
+
+        if (GetIFrameSizeCost(compressedIFrame) <= GetPFrameSizeCost(compressedPFrame))
+            WriteIFrame(frame, compressedIFrame);
+        else
+            WritePFrame(frame, compressedPFrame);
+    }
+
+    private void EncodeHybrid(byte[] frame, sbyte[] pFrame)
+    {
+        if (!CanApplyPFrameLosslessly(_lastIntraCodedFrame!, frame, pFrame))
+        {
+            EncodeIFrame(frame);
+            return;
+        }
+
+        if (CalculateAverageDelta(pFrame) <= PFrameK)
+        {
+            EncodePFrame(frame, pFrame);
+            return;
+        }
+
+        EncodeBestSize(frame, pFrame);
+    }
+
     /// <param name="frame">Source frame</param>
     private void EncodeIFrame(byte[] frame)
+        => WriteIFrame(frame, CompressIFrame(frame));
+    
+    private void WriteIFrame(byte[] frame, byte[] compressed)
     {
         _keyFrameIndex.Add(new KeyFrameInfo
         {
@@ -312,9 +360,6 @@ public class CVideoStream
         var stableFrame = frame.ToArray();
         _lastIntraCodedFrame = stableFrame;
         
-        var rle = RLE.Compress(stableFrame);
-        var compressed = Brotli.Compress(rle);
-        
         _writer.Write((byte)FrameType.IntraCoded);
         _writer.Write(compressed.Length);
         _writer.Write(compressed);
@@ -323,15 +368,39 @@ public class CVideoStream
     /// <param name="sourceFrame">Source frame</param>
     /// <param name="pFrame">Calculated PFrame</param>
     private void EncodePFrame(byte[] sourceFrame, sbyte[] pFrame)
+        => WritePFrame(sourceFrame, CompressPFrame(pFrame));
+
+    private void WritePFrame(byte[] sourceFrame, byte[] compressed)
     {
         _lastIntraCodedFrame = sourceFrame.ToArray();
-        
-        var rle = RLE.Compress(pFrame);
-        var compressed = Brotli.Compress(rle);
-        
+
         _writer.Write((byte)FrameType.PredictedFrame);
         _writer.Write(compressed.Length);
         _writer.Write(compressed);
+    }
+
+    private byte[] CompressIFrame(byte[] frame)
+        => Brotli.Compress(RLE.Compress(frame), BrotliCompressionLevel);
+    
+    private byte[] CompressPFrame(sbyte[] pFrame)
+        => Brotli.Compress(RLE.Compress(pFrame), BrotliCompressionLevel);
+    
+    private static int GetIFrameSizeCost(byte[] compressed)
+        => compressed.Length + sizeof(long) * 2;
+    
+    private static int GetPFrameSizeCost(byte[] compressed)
+        => compressed.Length;
+
+    private static double CalculateAverageDelta(sbyte[] pFrame)
+    {
+        double sum = 0;
+        for (int i = 0; i < pFrame.Length; i++)
+        {
+            int delta = pFrame[i];
+            sum += delta < 0 ? -delta : delta;
+        }
+
+        return pFrame.Length > 0 ? sum / pFrame.Length : 0;
     }
 
     private byte[] ReadExactBytes(int count)

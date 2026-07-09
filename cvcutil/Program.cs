@@ -48,6 +48,14 @@ class Program
         pFrameKOption.Description = "P-frame threshold. Lower values create more keyframes.";
         pFrameKOption.DefaultValueFactory = _ => 0.01;
 
+        var encodingModeOption = new Option<string?>("--encoding-mode");
+        encodingModeOption.Description = "Frame encoding mode: fast, best-size, hybrid.";
+        encodingModeOption.DefaultValueFactory = _ => "fast";
+        
+        var brotliCompressionOption = new Option<string?>("--brotli-compression-mode");
+        brotliCompressionOption.Description = "Brotli compression mode: slowest, optimal, fastest, no";
+        brotliCompressionOption.DefaultValueFactory = _ => "optimal";
+
         var overwriteOption = new Option<bool>("--overwrite");
         overwriteOption.Description = "Overwrite the output file if it already exists.";
 
@@ -58,6 +66,8 @@ class Program
         convertCommand.Options.Add(colorsOption);
         convertCommand.Options.Add(fpsOption);
         convertCommand.Options.Add(pFrameKOption);
+        convertCommand.Options.Add(encodingModeOption);
+        convertCommand.Options.Add(brotliCompressionOption);
         convertCommand.Options.Add(overwriteOption);
         convertCommand.SetAction(parseResult =>
             ConvertHandler.Convert(
@@ -68,6 +78,8 @@ class Program
                 parseResult.GetValue(colorsOption),
                 parseResult.GetValue(fpsOption),
                 parseResult.GetValue(pFrameKOption),
+                parseResult.GetValue(encodingModeOption),
+                parseResult.GetValue(brotliCompressionOption),
                 parseResult.GetValue(overwriteOption)));
 
         rootCommand.Subcommands.Add(playCommand);

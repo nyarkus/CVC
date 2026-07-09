@@ -13,7 +13,9 @@ public class Converter
         byte colorCount = 10,
         double? fps = null,
         double? pFrameK = null,
-        Action<int>? onFrameEncoded = null)
+        Action<int>? onFrameEncoded = null,
+        FrameEncodingMode encodingMode = FrameEncodingMode.Fast,
+        System.IO.Compression.CompressionLevel brotliCompressionLevel = System.IO.Compression.CompressionLevel.Optimal)
     {
         double outputFps = fps ?? ffmpeg.GetFPS(source);
         var sound = ffmpeg.ExtractAndResampleSoundToMemory(source);
@@ -25,6 +27,8 @@ public class Converter
         var videoStream = builder.GetVideoStream();
         if (pFrameK.HasValue)
             videoStream.PFrameK = pFrameK.Value;
+        videoStream.EncodingMode = encodingMode;
+        videoStream.BrotliCompressionLevel = brotliCompressionLevel;
 
         var framesEncoded = 0;
 

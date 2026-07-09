@@ -1,4 +1,7 @@
+using System.IO.Compression;
+using System.Text;
 using CVC.Encoder;
+using CVC.File;
 
 namespace cvcutil;
 
@@ -12,10 +15,14 @@ public static class ConvertHandler
         byte colors,
         double? fps,
         double? pFrameK,
+        string? encodingMode,
+        string? brotliCompression,
         bool overwrite)
     {
         try
         {
+            var parsedEncodingMode = ParseEncodingMode(encodingMode);
+            var parsedBrotliCompression = ParseBrotliCompression(brotliCompression);
             Validate(input, output, width, height, colors, fps, pFrameK, overwrite);
 
             var outputPath = GetOutputPath(input, output);
@@ -26,15 +33,20 @@ public static class ConvertHandler
                 $".{Path.GetFileName(outputFullPath)}.{Guid.NewGuid():N}.tmp");
 
             Console.WriteLine("Converting...");
-            Console.WriteLine($"Input:\t{input}");
-            Console.WriteLine($"Output:\t{outputFullPath}");
-            Console.WriteLine($"Size:\t{width}x{height}");
-            Console.WriteLine($"Colors:\t{colors}");
+            var sb = new StringBuilder();
+            AppendOption(sb, "Input", input);
+            AppendOption(sb, "Output", outputFullPath);
+            AppendOption(sb, "Size", $"{width}x{height}");
+            AppendOption(sb, "Colors", colors.ToString());
             if (fps.HasValue)
-                Console.WriteLine($"FPS:\t{fps.Value}");
+                AppendOption(sb, "FPS", fps.Value.ToString());
             if (pFrameK.HasValue)
-                Console.WriteLine($"PFrame:\t{pFrameK.Value}");
+                AppendOption(sb, "PFrame", pFrameK.Value.ToString());
+            AppendOption(sb, "Encoding Mode", FormatEncodingMode(parsedEncodingMode));
+            AppendOption(sb, "Brotli Compression Mode", FormatBrotliCompressionMode(parsedBrotliCompression));
 
+            Console.WriteLine(sb.ToString());
+            
             try
             {
                 using (var destination = File.Open(tempPath, FileMode.CreateNew, FileAccess.Write))
@@ -52,7 +64,9 @@ public static class ConvertHandler
                         {
                             if (framesEncoded % 30 == 0)
                                 Console.Write($"\rEncoded frames: {framesEncoded}");
-                        });
+                        },
+                        parsedEncodingMode, 
+                        parsedBrotliCompression);
                 }
 
                 File.Move(tempPath, outputFullPath, overwrite);
@@ -122,5 +136,67 @@ public static class ConvertHandler
             return output.Trim('"');
 
         return Path.ChangeExtension(input.Trim('"'), ".ccv");
+    }
+
+    private static void AppendOption(StringBuilder sb, string label, string value)
+    {
+        int labelWidth = 23;
+        sb.Append(label.PadRight(labelWidth));
+        sb.Append(": ");
+        sb.AppendLine(value);
+    }
+
+    private static FrameEncodingMode ParseEncodingMode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return FrameEncodingMode.Fast;
+
+        string normalized = value.Trim().Replace("-", string.Empty).Replace("_", string.Empty).ToLowerInvariant();
+        return normalized switch
+        {
+            "fast" => FrameEncodingMode.Fast,
+            "bestsize" => FrameEncodingMode.BestSize,
+            "hybrid" => FrameEncodingMode.Hybrid,
+            _ => throw new ArgumentException("Encoding mode must be one of: fast, best-size, hybrid.")
+        };
+    }
+
+    public static CompressionLevel ParseBrotliCompression(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return CompressionLevel.Optimal;
+        
+        string normalized = value.Trim().Replace("-", string.Empty).Replace("_", string.Empty).ToLowerInvariant();
+        return normalized switch
+        {
+            "slowest" => CompressionLevel.SmallestSize,
+            "optimal" => CompressionLevel.Optimal,
+            "fastest" => CompressionLevel.Fastest,
+            "no" => CompressionLevel.NoCompression,
+            _ => throw new ArgumentException("Brotli compression mode must be one of: slowest, optimal, fastest, no")
+        };
+    }
+
+    private static string FormatEncodingMode(FrameEncodingMode mode)
+    {
+        return mode switch
+        {
+            FrameEncodingMode.Fast => "fast",
+            FrameEncodingMode.BestSize => "best-size",
+            FrameEncodingMode.Hybrid => "hybrid",
+            _ => mode.ToString()
+        };
+    }
+    
+    private static string FormatBrotliCompressionMode(CompressionLevel mode)
+    {
+        return mode switch
+        {
+            CompressionLevel.SmallestSize => "slowest",
+            CompressionLevel.Optimal => "optimal",
+            CompressionLevel.Fastest => "fastest",
+            CompressionLevel.NoCompression => "no",
+            _ => mode.ToString()
+        };
     }
 }

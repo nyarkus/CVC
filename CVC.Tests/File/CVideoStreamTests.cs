@@ -65,4 +65,74 @@ public class CVideoStreamTests
         Assert.Equal(1, videoStream.Seek(0, SeekOrigin.End));
         Assert.Empty(videoStream.ReadFrame());
     }
+
+    [Fact]
+    public void BestSizeChoosesPredictedFrame()
+    {
+        var meta = CVideoMeta.Create(fps: 24, width: 64, height: 8, colorCount: 255);
+        var firstFrame = CreateNoisyFrame(512);
+        var predictedFrame = firstFrame.ToArray();
+        predictedFrame[0]++;
+
+        using var stream = CVideoTestFile.Create(
+            meta,
+            sound: [],
+            configure: videoStream => videoStream.EncodingMode = FrameEncodingMode.BestSize,
+            firstFrame,
+            predictedFrame);
+
+        Assert.Equal(
+            new[] { FrameType.IntraCoded, FrameType.PredictedFrame },
+            CVideoTestFile.ReadFrameTypes(stream));
+    }
+
+    [Fact]
+    public void BestSizeChoosesIntraCodedFrame()
+    {
+        var meta = CVideoMeta.Create(fps: 24, width: 64, height: 8, colorCount: 255);
+        var firstFrame = CreateNoisyFrame(512);
+        var keyFrame = Enumerable.Repeat((byte)64, 512).ToArray();
+
+        using var stream = CVideoTestFile.Create(
+            meta,
+            sound: [],
+            configure: videoStream => videoStream.EncodingMode = FrameEncodingMode.BestSize,
+            firstFrame,
+            keyFrame);
+
+        Assert.Equal(
+            new[] { FrameType.IntraCoded, FrameType.IntraCoded },
+            CVideoTestFile.ReadFrameTypes(stream));
+    }
+
+    [Fact]
+    public void HybridComparesFrameSizesWhenPFrameThresholdDoesNotMatch()
+    {
+        var meta = CVideoMeta.Create(fps: 24, width: 64, height: 8, colorCount: 255);
+        var firstFrame = CreateNoisyFrame(512);
+        var predictedFrame = firstFrame.ToArray();
+        predictedFrame[0]++;
+
+        using var stream = CVideoTestFile.Create(
+            meta,
+            sound: [],
+            configure: videoStream =>
+            {
+                videoStream.EncodingMode = FrameEncodingMode.Hybrid;
+                videoStream.PFrameK = 0;
+            },
+            firstFrame,
+            predictedFrame);
+
+        Assert.Equal(
+            new[] { FrameType.IntraCoded, FrameType.PredictedFrame },
+            CVideoTestFile.ReadFrameTypes(stream));
+    }
+
+    private static byte[] CreateNoisyFrame(int length)
+    {
+        return Enumerable.Range(0, length)
+            .Select(i => (byte)((i * 73 + 41) % 128))
+            .ToArray();
+    }
 }
