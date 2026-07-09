@@ -21,6 +21,8 @@ public static class ConvertHandler
     {
         try
         {
+            DateTimeOffset currentTime = DateTimeOffset.UtcNow;
+            
             var parsedEncodingMode = ParseEncodingMode(encodingMode);
             var parsedBrotliCompression = ParseBrotliCompression(brotliCompression);
             Validate(input, output, width, height, colors, fps, pFrameK, overwrite);
@@ -34,19 +36,20 @@ public static class ConvertHandler
 
             Console.WriteLine("Converting...");
             var sb = new StringBuilder();
-            AppendOption(sb, "Input", input);
-            AppendOption(sb, "Output", outputFullPath);
-            AppendOption(sb, "Size", $"{width}x{height}");
-            AppendOption(sb, "Colors", colors.ToString());
+            sb.AppendLine($"Input\t\t\t:\t{input}");
+            sb.AppendLine($"Output\t\t\t:\t{outputFullPath}");
+            sb.AppendLine($"Size\t\t\t:\t{width}x{height}");
+            sb.AppendLine($"Colors\t\t\t:\t{colors.ToString()}");
             if (fps.HasValue)
-                AppendOption(sb, "FPS", fps.Value.ToString());
+                sb.AppendLine($"FPS\t\t\t:\t{fps.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
             if (pFrameK.HasValue)
-                AppendOption(sb, "PFrame", pFrameK.Value.ToString());
-            AppendOption(sb, "Encoding Mode", FormatEncodingMode(parsedEncodingMode));
-            AppendOption(sb, "Brotli Compression Mode", FormatBrotliCompressionMode(parsedBrotliCompression));
+                sb.AppendLine($"PFrame\t\t\t:\t{pFrameK.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+            sb.AppendLine($"Encoding Mode\t\t:\t{FormatEncodingMode(parsedEncodingMode)}");
+            sb.AppendLine($"Brotli Compression\t:\t{FormatBrotliCompressionMode(parsedBrotliCompression)}");
 
             Console.WriteLine(sb.ToString());
-            
+
+            EncodingStatistics stats = new();
             try
             {
                 using (var destination = File.Open(tempPath, FileMode.CreateNew, FileAccess.Write))
@@ -66,7 +69,10 @@ public static class ConvertHandler
                                 Console.Write($"\rEncoded frames: {framesEncoded}");
                         },
                         parsedEncodingMode, 
-                        parsedBrotliCompression);
+                        parsedBrotliCompression,
+                        stats);
+                    
+                    stats.Complete(DateTimeOffset.UtcNow - currentTime, destination.Length);
                 }
 
                 File.Move(tempPath, outputFullPath, overwrite);
@@ -78,9 +84,24 @@ public static class ConvertHandler
 
                 throw;
             }
-
             Console.WriteLine();
             Console.WriteLine("Done.");
+            sb = new StringBuilder();
+            sb.AppendLine("Statistics:");
+            sb.AppendLine();
+            sb.AppendLine(
+                $"Encoding Duration\t:\t{stats.Duration.ToString("g", System.Globalization.CultureInfo.InvariantCulture)}");
+            sb.AppendLine($"Output file size\t:\t{stats.OutputBytes} bytes");
+            sb.AppendLine();
+            sb.AppendLine($"IFrames count\t\t:\t{stats.IFrames.Count}");
+            sb.AppendLine($"Average IFrame size\t:\t{stats.IFrames.AverageBytes} bytes");
+            sb.AppendLine($"Worst IFrame size\t:\t{stats.IFrames.WorstBytes} bytes");
+            sb.AppendLine();
+            sb.AppendLine($"PFrames count\t\t:\t{stats.PFrames.Count}");
+            sb.AppendLine($"Average PFrame size\t:\t{stats.PFrames.AverageBytes} bytes");
+            sb.AppendLine($"Worst PFrame size\t:\t{stats.PFrames.WorstBytes} bytes");
+            
+            Console.WriteLine(sb.ToString());
             return 0;
         }
         catch (Exception ex)
@@ -136,14 +157,6 @@ public static class ConvertHandler
             return output.Trim('"');
 
         return Path.ChangeExtension(input.Trim('"'), ".ccv");
-    }
-
-    private static void AppendOption(StringBuilder sb, string label, string value)
-    {
-        int labelWidth = 23;
-        sb.Append(label.PadRight(labelWidth));
-        sb.Append(": ");
-        sb.AppendLine(value);
     }
 
     private static FrameEncodingMode ParseEncodingMode(string? value)

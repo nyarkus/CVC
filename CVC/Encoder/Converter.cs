@@ -15,7 +15,8 @@ public class Converter
         double? pFrameK = null,
         Action<int>? onFrameEncoded = null,
         FrameEncodingMode encodingMode = FrameEncodingMode.Fast,
-        System.IO.Compression.CompressionLevel brotliCompressionLevel = System.IO.Compression.CompressionLevel.Optimal)
+        System.IO.Compression.CompressionLevel brotliCompressionLevel = System.IO.Compression.CompressionLevel.Optimal,
+        EncodingStatistics? statistics = null)
     {
         double outputFps = fps ?? ffmpeg.GetFPS(source);
         var sound = ffmpeg.ExtractAndResampleSoundToMemory(source);
@@ -29,6 +30,7 @@ public class Converter
             videoStream.PFrameK = pFrameK.Value;
         videoStream.EncodingMode = encodingMode;
         videoStream.BrotliCompressionLevel = brotliCompressionLevel;
+        videoStream.Statistics = statistics;
 
         var framesEncoded = 0;
 

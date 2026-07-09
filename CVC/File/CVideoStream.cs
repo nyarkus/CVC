@@ -260,6 +260,8 @@ public class CVideoStream
     public FrameEncodingMode EncodingMode = FrameEncodingMode.Fast;
     
     public System.IO.Compression.CompressionLevel BrotliCompressionLevel = System.IO.Compression.CompressionLevel.Optimal;
+
+    public EncodingStatistics? Statistics;
     
     /// <summary>
     /// Encodes frame
@@ -363,6 +365,8 @@ public class CVideoStream
         _writer.Write((byte)FrameType.IntraCoded);
         _writer.Write(compressed.Length);
         _writer.Write(compressed);
+        
+        Statistics?.IFrames.Record(compressed.Length);
     }
     
     /// <param name="sourceFrame">Source frame</param>
@@ -377,6 +381,8 @@ public class CVideoStream
         _writer.Write((byte)FrameType.PredictedFrame);
         _writer.Write(compressed.Length);
         _writer.Write(compressed);
+        
+        Statistics?.PFrames.Record(compressed.Length);
     }
 
     private byte[] CompressIFrame(byte[] frame)
