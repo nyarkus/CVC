@@ -28,12 +28,17 @@
 		<Folder Include="Properties\" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<None Update="libbass.so" Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))">
+	<ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+		<None Update="libbass.so">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 		</None>
-		<None Update="bass.dll" Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+		<None Update="bass.dll">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 		</None>
 	</ItemGroup>
 
