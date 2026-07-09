@@ -47,7 +47,7 @@ class Program
         var colorsOption = new Option<byte>("--colors");
         colorsOption.Aliases.Add("-c");
         colorsOption.Description = "Number of grayscale levels to encode. Valid range: 2-255.";
-        colorsOption.DefaultValueFactory = _ => (byte)10;
+        colorsOption.DefaultValueFactory = _ => 10;
 
         var fpsOption = new Option<double?>("--fps");
         fpsOption.Description = "Output FPS. Defaults to the source video FPS.";
