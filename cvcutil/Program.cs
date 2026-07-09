@@ -46,7 +46,7 @@ class Program
 
         var pFrameKOption = new Option<double?>("--pframe-k");
         pFrameKOption.Description = "P-frame threshold. Lower values create more keyframes.";
-        pFrameKOption.DefaultValueFactory = _ => 0.01;
+        pFrameKOption.DefaultValueFactory = _ => 0.1;
 
         var encodingModeOption = new Option<string?>("--encoding-mode");
         encodingModeOption.Description = "Frame encoding mode: fast, best-size, hybrid.";
