@@ -1,8 +1,0 @@
-namespace Schemes.CV;
-
-table ConsoleVideo {
-	fps:double;
-	sound:[ubyte];
-	frames:[string];
-	version:int;
-}

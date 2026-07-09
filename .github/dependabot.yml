@@ -4,7 +4,7 @@ updates:
     directory: "/"
     target-branch: "dev"
     schedule:
-      interval: "daily"
+      interval: "monthly"
     groups:
       tests:
         applies-to: version-updates
@@ -17,4 +17,4 @@ updates:
     directory: "/"
     target-branch: "dev"
     schedule:
-      interval: "daily"
+      interval: "monthly"
