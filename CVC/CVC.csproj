@@ -20,8 +20,8 @@
 		<PackageReference Include="ILGPU" Version="1.5.3" />
 		<PackageReference Include="ILGPU.Algorithms" Version="1.5.3" />
 		<PackageReference Include="ManagedBass" Version="4.0.2" />
-		<PackageReference Include="SkiaSharp" Version="4.148.0" />
-		<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.148.0" />
+		<PackageReference Include="SkiaSharp" Version="4.150.0" />
+		<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.150.0" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -29,17 +29,19 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
-		<None Update="libbass.so">
+		<Content Include="libbass.so">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</None>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
-		<None Update="bass.dll">
+		<Content Include="bass.dll">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</None>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</Content>
 	</ItemGroup>
 
 </Project>
