@@ -4,9 +4,13 @@ namespace CVC.File;
 
 public class CVideoMeta
 {
-    public const ushort CurrentVersion = 1;
-    public ushort FileVersion { get; private set; }
+    public const string CurrentMagicHeader = "CVC2";
+    public const ushort CurrentContainerVersion = 2;
+    public const ushort CurrentCodecVersion = 2;
     
+    public ushort ContainerVersion { get; private set; }
+    public ushort CodecVersion { get; private set; }
+    public string? MagicHeader { get; private set; }
     public double Fps { get; private set; }
     public int Width { get; private set; }
     public int Height { get; private set; }
@@ -16,7 +20,10 @@ public class CVideoMeta
     {
         var meta = new CVideoMeta();
         using BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true);
-        meta.FileVersion = br.ReadUInt16();
+
+        meta.MagicHeader = br.ReadString();
+        meta.ContainerVersion = br.ReadUInt16();
+        meta.CodecVersion = br.ReadUInt16();
         
         meta.Fps = br.ReadDouble();
         meta.Width = br.ReadInt32();
@@ -31,7 +38,9 @@ public class CVideoMeta
     public static CVideoMeta Create(double fps, int width, int height, byte colorCount)
     {
         var meta = new CVideoMeta();
-        meta.FileVersion = CurrentVersion;
+        meta.MagicHeader = CurrentMagicHeader;
+        meta.ContainerVersion = CurrentContainerVersion;
+        meta.CodecVersion = CurrentCodecVersion;
 
         meta.Fps = fps;
         meta.Width = width;
@@ -45,7 +54,9 @@ public class CVideoMeta
 
     public void Save(BinaryWriter writer)
     {
-        writer.Write(FileVersion);
+        writer.Write(CurrentMagicHeader);
+        writer.Write(CurrentContainerVersion);
+        writer.Write(CurrentCodecVersion);
         writer.Write(Fps);
         writer.Write(Width);
         writer.Write(Height);
@@ -54,9 +65,15 @@ public class CVideoMeta
 
     private void Validate()
     {
-        if (FileVersion != CurrentVersion)
-            throw new InvalidDataException($"Unsupported CVC file version: {FileVersion}.");
-
+        if (MagicHeader != CurrentMagicHeader)
+            throw new InvalidDataException("Magic header mismatch.");
+        
+        if (ContainerVersion != CurrentContainerVersion)
+            throw new InvalidDataException("Container version mismatch.");
+        
+        if (CodecVersion != CurrentCodecVersion)
+            throw new InvalidDataException("Codec version mismatch.");
+        
         if (double.IsNaN(Fps) || double.IsInfinity(Fps) || Fps <= 0)
             throw new InvalidDataException("FPS must be greater than zero.");
 
