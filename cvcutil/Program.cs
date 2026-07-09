@@ -17,7 +17,7 @@ class Program
         
         var charsetPresetOption = new Option<string?>("--charset-preset");
         charsetPresetOption.Aliases.Add("-p");
-        charsetPresetOption.Description = "Character set preset. Presets: classic, bricks, binary ";
+        charsetPresetOption.Description = "Character set preset. Presets: classic, blocks, binary ";
         charsetPresetOption.DefaultValueFactory = _ => "classic";
         
         playCommand.Options.Add(charsetOption);

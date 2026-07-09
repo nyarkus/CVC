@@ -12,7 +12,7 @@ public class PlayHandler
             charset = charsetPreset switch
             {
                 "classic" => " .:-=+*#%@",
-                "bricks" => " ░▒▓█",
+                "blocks" => " ░▒▓█",
                 "binary" => " █",
                 _ => ""
             };
