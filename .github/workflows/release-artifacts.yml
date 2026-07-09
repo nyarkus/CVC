@@ -1,0 +1,123 @@
+name: release artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Artifact version label.
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/tests.yml
+
+  publish:
+    name: publish ${{ matrix.rid }}
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - rid: linux-x64
+            archive: tar.gz
+          - rid: win-x64
+            archive: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve artifact name
+        id: meta
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          elif [[ -n "${INPUT_VERSION}" ]]; then
+            version="${INPUT_VERSION}"
+          else
+            version="${GITHUB_SHA::7}"
+          fi
+
+          name="cvcutil-${version}-${{ matrix.rid }}"
+          echo "name=${name}" >> "${GITHUB_OUTPUT}"
+
+      - name: Publish
+        run: >
+          dotnet publish ./cvcutil/cvcutil.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:PublishTrimmed=false
+          -p:DebugType=none
+          -p:DebugSymbols=false
+          -p:ContinuousIntegrationBuild=true
+          --output ./artifacts/publish/${{ steps.meta.outputs.name }}
+
+      - name: Add release docs
+        shell: bash
+        run: |
+          find "./artifacts/publish/${{ steps.meta.outputs.name }}" -name '*.pdb' -delete
+          cp README.md LICENSE.txt "./artifacts/publish/${{ steps.meta.outputs.name }}/"
+
+      - name: Archive
+        id: archive
+        shell: bash
+        run: |
+          mkdir -p ./artifacts/dist
+
+          if [[ "${{ matrix.archive }}" == "zip" ]]; then
+            archive="./artifacts/dist/${{ steps.meta.outputs.name }}.zip"
+            (cd ./artifacts/publish && zip -r "../dist/${{ steps.meta.outputs.name }}.zip" "${{ steps.meta.outputs.name }}")
+          else
+            archive="./artifacts/dist/${{ steps.meta.outputs.name }}.tar.gz"
+            tar -C ./artifacts/publish -czf "${archive}" "${{ steps.meta.outputs.name }}"
+          fi
+
+          echo "path=${archive}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.name }}
+          path: ${{ steps.archive.outputs.path }}
+          if-no-files-found: error
+
+  release:
+    name: github release
+    needs: publish
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts/dist
+          merge-multiple: true
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" ./artifacts/dist/* --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" ./artifacts/dist/* \
+              --title "${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi
