@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using CVC.Encoder;
 using CVC.File;
@@ -63,11 +64,7 @@ public static class ConvertHandler
                         colors,
                         fps,
                         pFrameK,
-                        framesEncoded =>
-                        {
-                            if (framesEncoded % 30 == 0)
-                                Console.Write($"\rEncoded frames: {framesEncoded}");
-                        },
+                        framesEncoded => { },
                         parsedEncodingMode, 
                         parsedBrotliCompression,
                         stats);
