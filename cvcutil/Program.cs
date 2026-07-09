@@ -43,6 +43,16 @@ class Program
 
         var fpsOption = new Option<double?>("--fps");
         fpsOption.Description = "Output FPS. Defaults to the source video FPS.";
+        
+        var overwriteOption = new Option<bool>("--overwrite");
+        overwriteOption.Description = "Overwrite the output file if it already exists.";
+        
+        var presetOption = new Option<string?>("--preset");
+        presetOption.Aliases.Add("-p");
+        presetOption.Description = "Encoding speed and quality. " +
+                                   "The slower the mode, the smaller the file size, but the longer the encoding will take." +
+                                   " Presets: fastest, fast, balanced, slow, slowest";
+        presetOption.DefaultValueFactory = _ => "balanced";
 
         var pFrameKOption = new Option<double?>("--pframe-k");
         pFrameKOption.Description = "P-frame threshold. Lower values create more keyframes.";
@@ -50,37 +60,35 @@ class Program
 
         var encodingModeOption = new Option<string?>("--encoding-mode");
         encodingModeOption.Description = "Frame encoding mode: fast, best-size, hybrid.";
-        encodingModeOption.DefaultValueFactory = _ => "fast";
         
         var brotliCompressionOption = new Option<string?>("--brotli-compression-mode");
         brotliCompressionOption.Description = "Brotli compression mode: slowest, optimal, fastest, no";
-        brotliCompressionOption.DefaultValueFactory = _ => "optimal";
-
-        var overwriteOption = new Option<bool>("--overwrite");
-        overwriteOption.Description = "Overwrite the output file if it already exists.";
 
         convertCommand.Arguments.Add(inputArgument);
         convertCommand.Options.Add(outputOption);
+        convertCommand.Options.Add(fpsOption);
         convertCommand.Options.Add(widthOption);
         convertCommand.Options.Add(heightOption);
         convertCommand.Options.Add(colorsOption);
-        convertCommand.Options.Add(fpsOption);
+        convertCommand.Options.Add(overwriteOption);
+        convertCommand.Options.Add(presetOption);
         convertCommand.Options.Add(pFrameKOption);
         convertCommand.Options.Add(encodingModeOption);
         convertCommand.Options.Add(brotliCompressionOption);
-        convertCommand.Options.Add(overwriteOption);
         convertCommand.SetAction(parseResult =>
             ConvertHandler.Convert(
                 parseResult.GetValue(inputArgument)!,
                 parseResult.GetValue(outputOption),
+                parseResult.GetValue(overwriteOption),
                 parseResult.GetValue(widthOption),
                 parseResult.GetValue(heightOption),
                 parseResult.GetValue(colorsOption),
                 parseResult.GetValue(fpsOption),
+                parseResult.GetValue(presetOption),
                 parseResult.GetValue(pFrameKOption),
                 parseResult.GetValue(encodingModeOption),
-                parseResult.GetValue(brotliCompressionOption),
-                parseResult.GetValue(overwriteOption)));
+                parseResult.GetValue(brotliCompressionOption)
+                ));
 
         rootCommand.Subcommands.Add(playCommand);
         rootCommand.Subcommands.Add(convertCommand);

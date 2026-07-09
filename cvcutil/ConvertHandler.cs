@@ -11,22 +11,56 @@ public static class ConvertHandler
     public static int Convert(
         string input,
         string? output,
+        bool overwrite,
         int width,
         int height,
         byte colors,
         double? fps,
+        string? encodingPreset,
         double? pFrameK,
         string? encodingMode,
-        string? brotliCompression,
-        bool overwrite)
+        string? brotliCompression
+        )
     {
         try
         {
             DateTimeOffset currentTime = DateTimeOffset.UtcNow;
             
-            var parsedEncodingMode = ParseEncodingMode(encodingMode);
-            var parsedBrotliCompression = ParseBrotliCompression(brotliCompression);
+            FrameEncodingMode parsedEncodingMode;
+            CompressionLevel parsedBrotliCompression;
+            var parsedEncodingPreset = ParseEncodingPreset(encodingPreset);
+            
             Validate(input, output, width, height, colors, fps, pFrameK, overwrite);
+
+            switch (parsedEncodingPreset)
+            {
+                case EncodingPreset.Fastest:
+                    parsedEncodingMode = FrameEncodingMode.Fast;
+                    parsedBrotliCompression = CompressionLevel.NoCompression;
+                    break;
+                case EncodingPreset.Fast:
+                    parsedEncodingMode = FrameEncodingMode.Fast;
+                    parsedBrotliCompression = CompressionLevel.Fastest;
+                    break;
+                default:
+                case EncodingPreset.Balanced:
+                    parsedEncodingMode = FrameEncodingMode.Hybrid;
+                    parsedBrotliCompression = CompressionLevel.Optimal;
+                    break;
+                case EncodingPreset.Slow:
+                    parsedEncodingMode = FrameEncodingMode.BestSize;
+                    parsedBrotliCompression = CompressionLevel.Optimal;
+                    break;
+                case EncodingPreset.Slowest:
+                    parsedEncodingMode = FrameEncodingMode.BestSize;
+                    parsedBrotliCompression = CompressionLevel.SmallestSize;
+                    break;
+            }
+
+            if (encodingMode is not null)
+                parsedEncodingMode = ParseEncodingMode(encodingMode);
+            if (brotliCompression is not null)
+                parsedBrotliCompression = ParseBrotliCompression(brotliCompression);
 
             var outputPath = GetOutputPath(input, output);
             var outputFullPath = Path.GetFullPath(outputPath);
@@ -207,6 +241,36 @@ public static class ConvertHandler
             CompressionLevel.Fastest => "fastest",
             CompressionLevel.NoCompression => "no",
             _ => mode.ToString()
+        };
+    }
+
+    private static EncodingPreset ParseEncodingPreset(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return EncodingPreset.Balanced;
+        
+        string normalized = value.Trim().Replace("-", string.Empty).Replace("_", string.Empty).ToLowerInvariant();
+        return normalized switch
+        {
+            "fastest" => EncodingPreset.Fastest,
+            "fast" => EncodingPreset.Fast,
+            "balanced" => EncodingPreset.Balanced,
+            "slow" => EncodingPreset.Slow,
+            "slowest" => EncodingPreset.Slowest,
+            _ => throw new ArgumentException("Encoding preset must be one of: fastest, fast, balanced, slow, slowest")
+        };
+    }
+
+    private static string FormatEncodingPreset(EncodingPreset preset)
+    {
+        return preset switch
+        {
+            EncodingPreset.Fastest => "fastest",
+            EncodingPreset.Fast => "fast",
+            EncodingPreset.Balanced => "balanced",
+            EncodingPreset.Slow => "slow",
+            EncodingPreset.Slowest => "slowest",
+            _ => preset.ToString()
         };
     }
 
